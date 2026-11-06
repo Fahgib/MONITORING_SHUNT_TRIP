@@ -4,11 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dasbor Mas Andre — Monitoring Shunt Trip & AMR JTN 2026</title>
+  <link rel="icon" type="image/jpeg" href="./LOGO PLN.jpeg" />
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    }
+  </script>
   <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Library Pendukung (SheetJS, Chart.js, Lucide Icons, SweetAlert2, jsPDF) -->
+  <!-- Library Pendukung -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -18,26 +24,26 @@
   <!-- Custom CSS -->
   <link rel="stylesheet" href="css/style.css" />
 </head>
-<body class="bg-slate-950 text-slate-100 antialiased selection:bg-cyan-500 selection:text-slate-950">
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100 antialiased selection:bg-cyan-500 selection:text-slate-950 transition-colors duration-200">
 
   <div class="flex h-screen overflow-hidden">
     <!-- SIDEBAR NAVIGASI -->
-    <aside class="w-72 bg-slate-900/80 backdrop-blur-xl border-r border-slate-800/80 flex flex-col justify-between shrink-0">
+    <aside class="w-72 bg-white dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200 dark:border-slate-800/80 flex flex-col justify-between shrink-0 transition-colors duration-200">
       <div>
-        <!-- Brand Header -->
-        <div class="p-6 border-b border-slate-800/80 flex items-center gap-3.5">
-          <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/25">
-            <i data-lucide="zap" class="w-6 h-6 text-slate-950 stroke-[2.5]"></i>
+        <!-- Brand Header dengan File LOGO PLN.jpeg -->
+        <div class="p-5 border-b border-slate-200 dark:border-slate-800/80 flex items-center gap-3.5">
+          <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center p-1 shadow-md border border-slate-200 dark:border-slate-700 shrink-0 overflow-hidden">
+            <img src="./LOGO PLN.jpeg" alt="Logo PLN" class="w-full h-full object-contain" />
           </div>
           <div>
-            <h1 class="font-extrabold text-lg tracking-tight text-white leading-none">DASBOR MAS ANDRE</h1>
-            <p class="text-xs text-cyan-400 font-medium mt-1">Monitoring Shunt Trip JTN 2026</p>
+            <h1 class="font-extrabold text-base tracking-tight text-slate-900 dark:text-white leading-none">DASBOR MAS ANDRE</h1>
+            <p class="text-[11px] text-cyan-600 dark:text-cyan-400 font-bold mt-1">PLN Monitoring Shunt Trip JTN</p>
           </div>
         </div>
 
         <!-- Menu Halaman (Multi-Page View) -->
         <div class="p-4">
-          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-500 px-3 mb-2">Menu Utama</p>
+          <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-3 mb-2">Menu Utama</p>
           <nav class="space-y-1.5" id="sidebar-nav">
             <button data-page="overview" class="nav-btn active w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all">
               <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
@@ -56,33 +62,41 @@
                 <i data-lucide="calendar-check-2" class="w-5 h-5"></i>
                 <span>Report Harian Lunas</span>
               </div>
-              <span class="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-400 rounded-full border border-emerald-500/30">LIVE</span>
+              <span class="px-2 py-0.5 text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full border border-emerald-500/30">LIVE</span>
             </button>
             <button data-page="habit-tracker" class="nav-btn w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-sm font-semibold transition-all">
               <i data-lucide="flame" class="w-5 h-5"></i>
               <span>Langganan Nunggak</span>
+            </button>
+            <!-- FITUR BARU: Target Prioritas & Peta Lapangan -->
+            <button data-page="prioritas-lapangan" class="nav-btn w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-sm font-semibold transition-all">
+              <div class="flex items-center gap-3">
+                <i data-lucide="LocateFixed" class="w-5 h-5"></i>
+                <span>Target & Maps Lapangan</span>
+              </div>
+              <span class="px-2 py-0.5 text-[10px] font-bold bg-rose-500/20 text-rose-600 dark:text-rose-400 rounded-full border border-rose-500/30">BARU</span>
             </button>
           </nav>
         </div>
       </div>
 
       <!-- Panel Status Sumber Data di Bawah Sidebar -->
-      <div class="p-4 border-t border-slate-800/80 space-y-3">
-        <div class="p-3.5 rounded-xl bg-slate-950/90 border border-slate-800">
+      <div class="p-4 border-t border-slate-200 dark:border-slate-800/80 space-y-3">
+        <div class="p-3.5 rounded-xl bg-slate-100 dark:bg-slate-950/90 border border-slate-200 dark:border-slate-800">
           <div class="flex items-center justify-between mb-1.5">
-            <span class="text-xs font-semibold text-slate-400">Sumber Data Aktif</span>
-            <span id="data-status-badge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/20 text-amber-300">Menunggu</span>
+            <span class="text-xs font-semibold text-slate-500 dark:text-slate-400">Sumber Data Aktif</span>
+            <span id="data-status-badge" class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300">Menunggu</span>
           </div>
-          <p id="data-source-label" class="text-xs text-slate-300 truncate font-medium">Belum ada file dimuat</p>
+          <p id="data-source-label" class="text-xs text-slate-700 dark:text-slate-300 truncate font-medium">Belum ada file dimuat</p>
           <p id="last-sync-label" class="text-[11px] text-slate-500 mt-0.5">-</p>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
-          <button id="btn-open-gsheet" class="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition">
+          <button id="btn-open-gsheet" class="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 text-xs font-semibold transition">
             <i data-lucide="cloud-download" class="w-4 h-4"></i>
             <span>Google Sheet</span>
           </button>
-          <label for="input-excel-file" class="cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition">
+          <label for="input-excel-file" class="cursor-pointer flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 text-xs font-semibold transition">
             <i data-lucide="file-spreadsheet" class="w-4 h-4"></i>
             <span>Upload Excel</span>
           </label>
@@ -94,19 +108,27 @@
     <!-- AREA KONTEN UTAMA -->
     <div class="flex-1 flex flex-col overflow-hidden">
       <!-- TOPBAR -->
-      <header class="h-20 bg-slate-900/60 backdrop-blur-md border-b border-slate-800/80 px-8 flex items-center justify-between shrink-0">
+      <header class="h-20 bg-white/80 dark:bg-slate-900/60 backdrop-blur-md border-b border-slate-200 dark:border-slate-800/80 px-8 flex items-center justify-between shrink-0 transition-colors duration-200">
         <div>
-          <h2 id="page-title" class="text-xl font-bold text-white">Ringkasan Eksekutif</h2>
-          <p id="page-subtitle" class="text-xs text-slate-400 mt-0.5">Pantauan menyeluruh Pelanggan, Daya, Lingkup Daerah, Rupiah, dan Eksekusi Shunt Trip</p>
+          <h2 id="page-title" class="text-xl font-bold text-slate-900 dark:text-white">Ringkasan Eksekutif</h2>
+          <p id="page-subtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Pantauan menyeluruh Pelanggan, Daya, Lingkup Daerah, Rupiah, dan Eksekusi Shunt Trip</p>
         </div>
 
-        <!-- Filter Global Bulan & Pencarian Cepat -->
-        <div class="flex items-center gap-3">
-          <div class="flex items-center gap-2 bg-slate-950 border border-slate-800 rounded-xl px-3 py-2">
-            <i data-lucide="calendar" class="w-4 h-4 text-cyan-400"></i>
-            <span class="text-xs text-slate-400 font-medium">Periode Bulan:</span>
-            <select id="global-month-filter" class="bg-transparent text-xs font-bold text-white focus:outline-none cursor-pointer pr-2">
-              <option value="ALL">Semua Bulan (Jan - Okt 2026)</option>
+        <!-- Aksi Cepat, Pencarian Global, Filter Bulan, & Tombol Tema -->
+        <div class="flex items-center gap-2.5">
+          <!-- FITUR BARU: Pencarian Cepat IDPEL (Cmd + K) -->
+          <button id="btn-quick-search" class="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 transition">
+            <i data-lucide="search" class="w-4 h-4 text-cyan-500"></i>
+            <span>Cari Cepat IDPEL</span>
+            <kbd class="px-1.5 py-0.5 text-[10px] rounded bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400">⌘K</kbd>
+          </button>
+
+          <!-- Filter Global Bulan -->
+          <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2">
+            <i data-lucide="calendar" class="w-4 h-4 text-cyan-600 dark:text-cyan-400"></i>
+            <span class="text-xs text-slate-500 dark:text-slate-400 font-medium">Bulan:</span>
+            <select id="global-month-filter" class="bg-transparent text-xs font-bold text-slate-900 dark:text-white focus:outline-none cursor-pointer pr-1">
+              <option value="ALL">Semua (Jan - Okt 2026)</option>
               <option value="Januari">Januari 2026</option>
               <option value="Februari">Februari 2026</option>
               <option value="Maret">Maret 2026</option>
@@ -120,20 +142,27 @@
             </select>
           </div>
 
-          <button id="btn-refresh-data" title="Muat Ulang Data" class="p-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 transition">
+          <!-- Tombol Pengalih Tema Terang / Gelap -->
+          <button id="btn-theme-toggle" title="Ubah Mode Cerah / Gelap" class="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-xs font-bold text-slate-700 dark:text-slate-200 transition">
+            <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-amber-400"></i>
+            <i data-lucide="moon" class="w-4 h-4 block dark:hidden text-indigo-600"></i>
+            <span id="theme-label-text">Gelap</span>
+          </button>
+
+          <button id="btn-refresh-data" title="Muat Ulang Data" class="p-2 rounded-xl bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 transition">
             <i data-lucide="refresh-cw" class="w-4 h-4"></i>
           </button>
         </div>
       </header>
 
-      <!-- WADAH DINAMIS SETIAP HALAMAN (PAGE CONTAINER) -->
+      <!-- WADAH DINAMIS SETIAP HALAMAN -->
       <main id="page-container" class="flex-1 overflow-y-auto p-8 space-y-6">
-        <!-- Konten dari masing-masing modul halaman akan dirender di sini -->
+        <!-- Konten dari modul halaman akan dirender di sini -->
       </main>
     </div>
   </div>
 
-  <!-- Memuat Pengatur Utama dengan ES Modules -->
+  <!-- Pengatur Utama -->
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
