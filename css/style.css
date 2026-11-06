@@ -1,35 +1,41 @@
 body {
   font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: #f8fafc; /* Abu-abu sangat muda agar kartu putih terlihat menonjol */
+  color: #0f172a; /* Teks utama hitam kebiruan (Slate 900) */
 }
 
 /* Efek Aktif Tombol Navigasi Sidebar */
 .nav-btn {
-  color: #94a3b8;
+  color: #64748b;
+  transition: all 0.2s ease;
 }
 
 .nav-btn:hover {
-  background: rgba(30, 41, 59, 0.65);
-  color: #f8fafc;
+  background: #f1f5f9;
+  color: #0f172a;
 }
 
 .nav-btn.active {
-  background: linear-gradient(135deg, rgba(6, 182, 212, 0.18), rgba(37, 99, 235, 0.18));
-  color: #22d3ee;
-  border: 1px solid rgba(34, 211, 238, 0.3);
-  box-shadow: 0 4px 20px -2px rgba(6, 182, 212, 0.15);
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(37, 99, 235, 0.12));
+  color: #0284c7; /* Biru cyan lebih gelap agar terbaca jelas di latar putih */
+  border: 1px solid rgba(14, 165, 233, 0.35);
+  box-shadow: 0 4px 14px -2px rgba(14, 165, 233, 0.12);
+  font-weight: 600;
 }
 
-/* Kartu Glassmorphism */
+/* Kartu Putih Bersih (Clean Glassmorphism) */
 .glass-card {
-  background: rgba(15, 23, 42, 0.72);
+  background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(16px);
-  border: 1px solid rgba(51, 65, 85, 0.55);
+  border: 1px solid #e2e8f0;
   border-radius: 1rem;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04), 0 2px 6px -1px rgba(15, 23, 42, 0.02);
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .glass-card:hover {
-  border-color: rgba(56, 189, 248, 0.4);
+  border-color: #bae6fd;
+  box-shadow: 0 10px 25px -4px rgba(14, 165, 233, 0.08);
 }
 
 /* Kustomisasi Scrollbar */
@@ -39,33 +45,34 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: #020617;
+  background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+  background: #cbd5e1;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+  background: #94a3b8;
 }
 
 /* Tabel Modern */
 .data-table th {
-  background: rgba(2, 6, 23, 0.85);
-  color: #94a3b8;
+  background: #f8fafc;
+  color: #475569;
   font-weight: 700;
   text-transform: uppercase;
   font-size: 0.7rem;
   letter-spacing: 0.05em;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .data-table tr {
-  border-bottom: 1px solid rgba(30, 41, 59, 0.7);
+  border-bottom: 1px solid #f1f5f9;
   transition: background-color 0.15s ease;
 }
 
 .data-table tbody tr:hover {
-  background-color: rgba(30, 41, 59, 0.45);
+  background-color: #f8fafc;
 }
