@@ -15,7 +15,7 @@ const STATE = {
 
 const PAGE_META = {
   'overview': {
-    title: 'Ringkasan Eksekutif Dasbor Mas Andre',
+    title: 'Dasbor Monitoring Shunt Trip — & AMR JTN 2026',
     subtitle: 'Pantauan menyeluruh Jumlah Pelanggan, Daya, Lingkup Daerah, Rupiah, dan Eksekusi Shunt Trip'
   },
   'pelanggan-daya': {
