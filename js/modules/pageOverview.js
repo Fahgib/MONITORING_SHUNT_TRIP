@@ -44,7 +44,6 @@ export function renderPageOverview(container, records) {
   const shuntripCount = records.filter((r) => r.eksekusiTE === 'Shuntrip').length;
   const modemOffCount = records.filter((r) => r.eksekusiTE === 'Modem Off').length;
   const tanpaEksCount = totalBarisTransaksi - shuntripCount - modemOffCount;
-  const reqNiagaCount = records.filter((r) => r.requestNiaga === 'Request').length;
   const daerahList = rekapPerDaerah(records);
 
   const persenLunasPelanggan = totalPelangganUnik
@@ -85,7 +84,7 @@ export function renderPageOverview(container, records) {
     const shunt = items.filter((r) => r.eksekusiTE === 'Shuntrip').length;
     const modem = items.filter((r) => r.eksekusiTE === 'Modem Off').length;
     const tanpaEks = items.length - shunt - modem;
-    const req = items.filter((r) => r.requestNiaga === 'Request').length;
+    const totalBulan = shunt + modem + tanpaEks;
 
     return {
       bulan,
@@ -101,12 +100,12 @@ export function renderPageOverview(container, records) {
       shunt,
       modem,
       tanpaEks,
-      req
+      totalBulan
     };
   });
 
   container.innerHTML = `
-    <!-- 5 KARTU PILAR UTAMA DENGAN IKON PENJELASAN RINCIAN PER BULAN -->
+    <!-- 5 KARTU PILAR UTAMA -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
       <!-- 1. Jumlah Pelanggan -->
       <div class="glass-card p-5">
@@ -172,7 +171,7 @@ export function renderPageOverview(container, records) {
         </div>
       </div>
 
-      <!-- 5. Status Eksekusi Shunt Trip -->
+      <!-- 5. Status Eksekusi Shunt Trip (Tanpa Req Niaga, diganti Total Per Bulan) -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Eksekusi TE</span>
@@ -183,8 +182,8 @@ export function renderPageOverview(container, records) {
         <p class="text-2xl font-extrabold text-white mt-3">${formatNumber(shuntripCount)} Shuntrip</p>
         <p class="text-xs text-slate-400 mt-1">Modem Off: <strong class="text-amber-300">${formatNumber(modemOffCount)}</strong></p>
         <div class="mt-3 pt-3 border-t border-slate-800/80 flex justify-between text-xs">
-          <span class="text-cyan-400 font-semibold">Req Niaga: ${formatNumber(reqNiagaCount)}</span>
-          <span class="text-slate-400">Tanpa Eks: ${formatNumber(tanpaEksCount)}</span>
+          <span class="text-slate-300">Tanpa Eks: ${formatNumber(tanpaEksCount)}</span>
+          <span class="text-cyan-400 font-semibold">Total: ${formatNumber(totalBarisTransaksi)}</span>
         </div>
       </div>
     </div>
@@ -260,7 +259,6 @@ export function renderPageOverview(container, records) {
     shuntripCount,
     modemOffCount,
     tanpaEksCount,
-    reqNiagaCount,
     rincianBulanan
   });
 
@@ -453,16 +451,16 @@ function setupIconExplanations(container, stats) {
       `
     },
     eksekusi: {
-      title: 'Penjelasan Status Eksekusi TE per Bulan',
+      title: 'Penjelasan Status Eksekusi TE & Total Per Bulan',
       html: `
         <div class="text-left text-xs space-y-3 leading-relaxed">
-          <p><strong>Mengapa hasilnya ${formatNumber(stats.shuntripCount)} Shuntrip?</strong><br/>
-          Sistem menjumlahkan tindakan pada kolom <code>Eksekusi TE</code> dan <code>Request Niaga</code> dari setiap bulan.</p>
+          <p><strong>Bagaimana perhitungan status eksekusi lapangan?</strong><br/>
+          Sistem menjumlahkan tindakan <code>Shuntrip</code>, <code>Modem Off</code>, dan <code>Tanpa Eksekusi</code> dari setiap bulan.</p>
           <div class="p-3 rounded-xl bg-slate-900 text-slate-100 space-y-1">
             <div>• <strong>Total Shuntrip:</strong> ${formatNumber(stats.shuntripCount)} | <strong>Modem Off:</strong> ${formatNumber(stats.modemOffCount)} | <strong>Tanpa Eks:</strong> ${formatNumber(stats.tanpaEksCount)}</div>
-            <div>• <strong>Total Request Niaga:</strong> ${formatNumber(stats.reqNiagaCount)} pengajuan</div>
+            <div>• <strong>Total Keseluruhan per Bulan:</strong> ${formatNumber(stats.totalBarisTransaksi)} data</div>
           </div>
-          <p class="font-bold text-rose-400 pt-1">Rincian Penjumlahan Eksekusi per Bulan:</p>
+          <p class="font-bold text-cyan-400 pt-1">Rincian Total Eksekusi per Bulan:</p>
           <div class="max-h-56 overflow-y-auto rounded-xl border border-slate-700 bg-slate-950 p-2">
             <table class="w-full text-[11px] text-slate-200">
               <thead>
@@ -470,8 +468,8 @@ function setupIconExplanations(container, stats) {
                   <th class="py-1.5 text-left">Bulan</th>
                   <th class="py-1.5 text-right text-cyan-300">Shuntrip</th>
                   <th class="py-1.5 text-right text-amber-300">Modem Off</th>
-                  <th class="py-1.5 text-right">Tanpa Eks</th>
-                  <th class="py-1.5 text-right text-emerald-400">Req Niaga</th>
+                  <th class="py-1.5 text-right text-slate-300">Tanpa Eks</th>
+                  <th class="py-1.5 text-right text-emerald-400">Total Bulanan</th>
                 </tr>
               </thead>
               <tbody>
@@ -480,8 +478,8 @@ function setupIconExplanations(container, stats) {
                     <td class="py-1 font-semibold">${m.bulan}</td>
                     <td class="py-1 text-right font-bold text-cyan-300">+${formatNumber(m.shunt)}</td>
                     <td class="py-1 text-right text-amber-300">+${formatNumber(m.modem)}</td>
-                    <td class="py-1 text-right text-slate-400">${formatNumber(m.tanpaEks)}</td>
-                    <td class="py-1 text-right text-emerald-400">${formatNumber(m.req)}</td>
+                    <td class="py-1 text-right text-slate-300">${formatNumber(m.tanpaEks)}</td>
+                    <td class="py-1 text-right font-bold text-emerald-400">${formatNumber(m.totalBulan)}</td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -490,8 +488,8 @@ function setupIconExplanations(container, stats) {
                   <td class="py-1.5">TOTAL</td>
                   <td class="py-1.5 text-right text-cyan-300">${formatNumber(stats.shuntripCount)}</td>
                   <td class="py-1.5 text-right text-amber-300">${formatNumber(stats.modemOffCount)}</td>
-                  <td class="py-1.5 text-right">${formatNumber(stats.tanpaEksCount)}</td>
-                  <td class="py-1.5 text-right text-emerald-400">${formatNumber(stats.reqNiagaCount)}</td>
+                  <td class="py-1.5 text-right text-slate-300">${formatNumber(stats.tanpaEksCount)}</td>
+                  <td class="py-1.5 text-right text-emerald-400">${formatNumber(stats.totalBarisTransaksi)}</td>
                 </tr>
               </tfoot>
             </table>
