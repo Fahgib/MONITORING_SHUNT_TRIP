@@ -78,8 +78,7 @@ export function renderPageSosialisasi(container, allRecords) {
         <div class="bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
           <span class="text-xs text-slate-400 font-medium whitespace-nowrap">Bulan:</span>
           <select id="filter-sos-bulan" class="bg-transparent text-xs font-bold text-cyan-400 focus:outline-none cursor-pointer text-right w-full">
-            <option value="ALL">Semua Bulan (2026)</option>
-            ${months.map((m) => `<option value="${m}">${m} 2026</option>`).join('')}
+            ${months.map((m, idx) => `<option value="${m}" ${idx === 0 ? 'selected' : ''}>${m} 2026</option>`).join('')}
           </select>
         </div>
 
@@ -162,13 +161,14 @@ export function renderPageSosialisasi(container, allRecords) {
     }
   });
 
-  // Opsi dropdown Kategori Nunggak (1 s.d. 12 mengikuti bulan)
+  // Opsi dropdown Kategori Nunggak (1 s.d. urutan bulan terpilih)
   const updateKategoriOptions = () => {
     const selectedBulan = document.getElementById('filter-sos-bulan').value;
     const katSelect = document.getElementById('filter-sos-kategori');
     const prevValue = katSelect.value;
 
-    const maxNunggak = selectedBulan === 'ALL' ? months.length : months.indexOf(selectedBulan) + 1;
+    const bulanIdx = months.indexOf(selectedBulan);
+    const maxNunggak = bulanIdx !== -1 ? bulanIdx + 1 : 1;
 
     let optionsHtml = `<option value="ALL">Semua Penunggak</option>`;
     for (let i = 1; i <= maxNunggak; i++) {
@@ -208,10 +208,9 @@ export function renderPageSosialisasi(container, allRecords) {
     tglSelect.disabled = false;
     tglSelect.classList.remove('opacity-50', 'cursor-not-allowed');
 
-    let relevantRows = evaluatedRecords.filter((r) => r.isNunggak && r.statusType === 'LUNAS_LEWAT_20');
-    if (selectedBulan !== 'ALL') {
-      relevantRows = relevantRows.filter((r) => r.bulan === selectedBulan);
-    }
+    const relevantRows = evaluatedRecords.filter(
+      (r) => r.isNunggak && r.statusType === 'LUNAS_LEWAT_20' && r.bulan === selectedBulan
+    );
 
     const uniqueDates = [];
     const seen = new Set();
@@ -254,7 +253,7 @@ export function renderPageSosialisasi(container, allRecords) {
       `Kami dari petugas PLN UP3 Jatinegara menginformasikan bahwa tagihan rekening listrik untuk bulan *${item.bulan} 2026* dengan daya ${formatNumber(item.daya)} VA sebesar *${formatRupiah(item.rptag)}* ${statusKalimat}\n\n` +
       edukasiKalimat +
       `Terima kasih atas kerja sama dan perhatian Bapak/Ibu dalam membayar tagihan listrik tepat waktu sebelum tanggal 20.\n\n` +
-      `_Salam hangat,_\n*Tim Pelayanan Pelanggan PLN UP Jatinegara*`
+      `_Salam hangat,_\n*Tim Pelayanan Pelanggan PLN UP3 Jatinegara*`
     );
   };
 
@@ -332,11 +331,7 @@ export function renderPageSosialisasi(container, allRecords) {
     const selectedTglLunas = document.getElementById('filter-sos-tgl-lunas').value;
     const query = document.getElementById('search-sos-input').value.toLowerCase().trim();
 
-    let rows = evaluatedRecords.filter((r) => r.isNunggak);
-
-    if (selectedBulan !== 'ALL') {
-      rows = rows.filter((r) => r.bulan === selectedBulan);
-    }
+    let rows = evaluatedRecords.filter((r) => r.isNunggak && r.bulan === selectedBulan);
 
     if (selectedStatus !== 'ALL') {
       rows = rows.filter((r) => r.statusType === selectedStatus);
@@ -666,7 +661,7 @@ export function renderPageSosialisasi(container, allRecords) {
     if (window.lucide) window.lucide.createIcons();
   };
 
-  // Inisialisasi awal opsi filter dinamis
+  // Inisialisasi awal opsi filter dinamis (otomatis bulan Januari)
   updateKategoriOptions();
   updateTanggalLunasOptions();
 
