@@ -6,6 +6,7 @@ import { renderPagePelangganDaya } from './modules/pagePelangganDaya.js';
 import { renderPageLingkupDaerah } from './modules/pageLingkupDaerah.js';
 import { renderPageReportHarian } from './modules/pageReportHarian.js';
 import { renderPageHabitTracker } from './modules/pageHabitTracker.js';
+import { renderPageSosialisasi } from './modules/pageSosialisasi.js';
 
 const STATE = {
   allRecords: [],
@@ -14,6 +15,7 @@ const STATE = {
 };
 
 const PAGE_META = {
+  
   'overview': {
     title: 'Dasbor Monitoring Shunt Trip — & AMR JTN 2026',
     subtitle: 'Pantauan menyeluruh Jumlah Pelanggan, Daya, Lingkup Daerah, Rupiah, dan Eksekusi Shunt Trip'
@@ -37,6 +39,10 @@ const PAGE_META = {
   'prioritas-lapangan': {
     title: 'Target Prioritas Eksekusi & Navigasi Maps Lapangan',
     subtitle: 'Daftar prioritas tunggakan tertinggi yang belum lunas beserta tautan titik lokasi Google Maps'
+  },
+  'sosialisasi-penunggak': {
+  title: 'Pusat Analisis Penunggak & Sosialisasi Pelanggan',
+  subtitle: 'Identifikasi pelanggan penunggak baru per bulan untuk pendekatan persuasif dan edukasi pelunasan'
   }
 };
 
@@ -362,6 +368,9 @@ function renderActivePage() {
   } else if (STATE.activePage === 'prioritas-lapangan') {
     renderPagePrioritasLapangan(container, records);
   }
+  else if (STATE.activePage === 'sosialisasi-penunggak') {
+  renderPageSosialisasi(container, STATE.allRecords);
+}
 }
 
 async function initDataLoading() {
