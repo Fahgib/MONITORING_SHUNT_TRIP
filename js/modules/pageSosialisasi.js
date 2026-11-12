@@ -2,8 +2,8 @@ import { CONFIG } from '../config.js';
 import { formatRupiah, formatNumber, formatTanggalIndo } from '../utils/formatter.js';
 
 // Fungsi mengecek apakah pembayaran dilakukan lewat dari tanggal 20 bulan berjalan
-export function checkLatePayment(record, monthsOrder) {
-  if (!record || !record.isLunas || !record.tanggalLunas) {
+function checkLatePayment(record, monthsOrder) {
+  if (!record.isLunas || !record.tanggalLunas) {
     return {
       isNunggak: true,
       statusType: 'BELUM_LUNAS',
@@ -13,7 +13,7 @@ export function checkLatePayment(record, monthsOrder) {
   }
 
   const raw = String(record.tanggalLunas).trim();
-  const bulanIdx = monthsOrder.indexOf(record.bulan);
+  const bulanIdx = monthsOrder.indexOf(record.bulan); // 0 = Januari, 1 = Februari, dst.
   let day = null;
   let month = null;
 
@@ -41,6 +41,7 @@ export function checkLatePayment(record, monthsOrder) {
   const formattedTglLunas = formatTanggalIndo(record.tanggalLunas) || raw;
 
   if (day !== null) {
+    // Jika dibayar di bulan berikutnya atau tanggal bayar > 20, tetap dihitung menunggak
     const isNextMonth = month !== null && bulanIdx !== -1 && month > bulanIdx;
     const isAfter20 = day > 20 || isNextMonth;
 
@@ -48,7 +49,7 @@ export function checkLatePayment(record, monthsOrder) {
       isNunggak: isAfter20,
       statusType: isAfter20 ? 'LUNAS_LEWAT_20' : 'LUNAS_TEPAT_WAKTU',
       dayPaid: day,
-      formattedTglLunas: formattedTglLunas
+      formattedTglLunas
     };
   }
 
@@ -56,21 +57,12 @@ export function checkLatePayment(record, monthsOrder) {
     isNunggak: true,
     statusType: 'LUNAS_LEWAT_20',
     dayPaid: null,
-    formattedTglLunas: formattedTglLunas
+    formattedTglLunas
   };
 }
 
-export function renderPageSosialisasi(container, allRecords = []) {
-  const months = (CONFIG && Array.isArray(CONFIG.MONTH_ORDER) && CONFIG.MONTH_ORDER.length > 0)
-    ? CONFIG.MONTH_ORDER
-    : ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-
-  const monthOptionsHtml = months
-    .map((m, idx) => {
-      const selectedAttr = idx === 0 ? ' selected' : '';
-      return '<option value="' + m + '"' + selectedAttr + '>' + m + ' 2026</option>';
-    })
-    .join('');
+export function renderPageSosialisasi(container, allRecords) {
+  const months = CONFIG.MONTH_ORDER;
 
   container.innerHTML = `
     <!-- PANEL KONTROL & FILTER PENUNGGAK -->
@@ -86,7 +78,8 @@ export function renderPageSosialisasi(container, allRecords = []) {
         <div class="bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-2">
           <span class="text-xs text-slate-400 font-medium whitespace-nowrap">Bulan:</span>
           <select id="filter-sos-bulan" class="bg-transparent text-xs font-bold text-cyan-400 focus:outline-none cursor-pointer text-right w-full">
-            ${monthOptionsHtml}
+            <option value="ALL">Semua Bulan (2026)</option>
+            ${months.map((m) => `<option value="${m}">${m} 2026</option>`).join('')}
           </select>
         </div>
 
@@ -148,7 +141,7 @@ export function renderPageSosialisasi(container, allRecords = []) {
   `;
 
   // Evaluasi setiap baris dengan aturan jatuh tempo tanggal 20
-  const evaluatedRecords = allDataSorted(allRecords, months).map((r) => {
+  const evaluatedRecords = allDataSorted(allRecords).map((r) => {
     const evalInfo = checkLatePayment(r, months);
     return {
       ...r,
@@ -169,52 +162,43 @@ export function renderPageSosialisasi(container, allRecords = []) {
     }
   });
 
-  // Opsi dropdown Kategori Nunggak (mengikuti bulan yang dipilih)
+  // Opsi dropdown Kategori Nunggak (1 s.d. 12 mengikuti bulan)
   const updateKategoriOptions = () => {
-    const bulanEl = document.getElementById('filter-sos-bulan');
+    const selectedBulan = document.getElementById('filter-sos-bulan').value;
     const katSelect = document.getElementById('filter-sos-kategori');
-    if (!bulanEl || !katSelect) return;
-
-    const selectedBulan = bulanEl.value;
     const prevValue = katSelect.value;
 
-    const bulanIdx = months.indexOf(selectedBulan);
-    const maxNunggak = bulanIdx !== -1 ? bulanIdx + 1 : 1;
+    const maxNunggak = selectedBulan === 'ALL' ? months.length : months.indexOf(selectedBulan) + 1;
 
-    let optionsHtml = '<option value="ALL">Semua Penunggak</option>';
+    let optionsHtml = `<option value="ALL">Semua Penunggak</option>`;
     for (let i = 1; i <= maxNunggak; i++) {
-      const label = i === 1 ? 'Nunggak 1x (Baru)' : 'Nunggak ' + i + 'x';
-      optionsHtml += '<option value="' + i + '">' + label + '</option>';
+      const label = i === 1 ? `Nunggak 1x (Baru)` : `Nunggak ${i}x`;
+      optionsHtml += `<option value="${i}">${label}</option>`;
     }
 
     if (maxNunggak > 1) {
-      optionsHtml += '<option value="BERULANG">Semua Berulang (>1x)</option>';
+      optionsHtml += `<option value="BERULANG">Semua Berulang (>1x)</option>`;
     }
 
     katSelect.innerHTML = optionsHtml;
 
-    const parsedPrev = parseInt(prevValue, 10);
     const isStillValid =
       prevValue === 'ALL' ||
       (prevValue === 'BERULANG' && maxNunggak > 1) ||
-      (!isNaN(parsedPrev) && parsedPrev <= maxNunggak);
+      (!isNaN(parseInt(prevValue, 10)) && parseInt(prevValue, 10) <= maxNunggak);
 
     katSelect.value = isStillValid ? prevValue : 'ALL';
   };
 
   // Opsi dropdown Tanggal Pelunasan
   const updateTanggalLunasOptions = () => {
-    const bulanEl = document.getElementById('filter-sos-bulan');
-    const statusEl = document.getElementById('filter-sos-status');
+    const selectedBulan = document.getElementById('filter-sos-bulan').value;
+    const selectedStatus = document.getElementById('filter-sos-status').value;
     const tglSelect = document.getElementById('filter-sos-tgl-lunas');
-    if (!bulanEl || !statusEl || !tglSelect) return;
-
-    const selectedBulan = bulanEl.value;
-    const selectedStatus = statusEl.value;
     const prevTgl = tglSelect.value;
 
     if (selectedStatus === 'BELUM_LUNAS') {
-      tglSelect.innerHTML = '<option value="ALL">Semua Tanggal</option>';
+      tglSelect.innerHTML = `<option value="ALL">Semua Tanggal</option>`;
       tglSelect.value = 'ALL';
       tglSelect.disabled = true;
       tglSelect.classList.add('opacity-50', 'cursor-not-allowed');
@@ -224,9 +208,10 @@ export function renderPageSosialisasi(container, allRecords = []) {
     tglSelect.disabled = false;
     tglSelect.classList.remove('opacity-50', 'cursor-not-allowed');
 
-    const relevantRows = evaluatedRecords.filter(
-      (r) => r.isNunggak && r.statusType === 'LUNAS_LEWAT_20' && r.bulan === selectedBulan
-    );
+    let relevantRows = evaluatedRecords.filter((r) => r.isNunggak && r.statusType === 'LUNAS_LEWAT_20');
+    if (selectedBulan !== 'ALL') {
+      relevantRows = relevantRows.filter((r) => r.bulan === selectedBulan);
+    }
 
     const uniqueDates = [];
     const seen = new Set();
@@ -243,9 +228,9 @@ export function renderPageSosialisasi(container, allRecords = []) {
 
     uniqueDates.sort((a, b) => a.dayPaid - b.dayPaid || a.label.localeCompare(b.label));
 
-    let html = '<option value="ALL">Semua Tanggal</option>';
+    let html = `<option value="ALL">Semua Tanggal</option>`;
     uniqueDates.forEach((d) => {
-      html += '<option value="' + d.label + '">' + d.label + '</option>';
+      html += `<option value="${d.label}">${d.label}</option>`;
     });
 
     tglSelect.innerHTML = html;
@@ -257,19 +242,19 @@ export function renderPageSosialisasi(container, allRecords = []) {
     const tglLunasText = item.formattedTglLunas || formatTanggalIndo(item.tanggalLunas);
     const statusKalimat =
       item.statusType === 'BELUM_LUNAS'
-        ? 'terpantau *belum melakukan pelunasan* hingga melewati batas waktu tanggal 20.'
-        : 'tercatat melakukan pelunasan pada tanggal *' + tglLunasText + '* (melewati batas jatuh tempo tanggal 20 setiap bulannya).';
+        ? `terpantau *belum melakukan pelunasan* hingga melewati batas waktu tanggal 20.`
+        : `tercatat melakukan pelunasan pada tanggal *${tglLunasText}* (melewati batas jatuh tempo tanggal 20 setiap bulannya).`;
 
     const edukasiKalimat = item.isBaruPertamaKali
-      ? 'Mengingat ini adalah keterlambatan pertama Bapak/Ibu di tahun 2026, kami ingin bersilaturahmi sekaligus mengingatkan agar ke depannya pembayaran listrik dapat dilakukan *sebelum tanggal 20 setiap bulannya* guna menghindari pemutusan otomatis (Shunt Trip).\n\n'
-      : 'Mengingat IDPEL Bapak/Ibu tercatat sudah melewati batas pembayaran tanggal 20 sebanyak *' + item.riwayatTotal + ' kali* (yaitu pada bulan: *' + item.riwayatBulanDetailList + '*), kami sangat mengharapkan kerja sama Bapak/Ibu untuk melakukan pembayaran tepat waktu sebelum tanggal 20 guna menghindari pemutusan otomatis (Shunt Trip) maupun sanksi pembongkaran rampung.\n\n';
+      ? `Mengingat ini adalah keterlambatan pertama Bapak/Ibu di tahun 2026, kami ingin bersilaturahmi sekaligus mengingatkan agar ke depannya pembayaran listrik dapat dilakukan *sebelum tanggal 20 setiap bulannya* guna menghindari pemutusan otomatis (Shunt Trip).\n\n`
+      : `Mengingat IDPEL Bapak/Ibu tercatat sudah melewati batas pembayaran tanggal 20 sebanyak *${item.riwayatTotal} kali* (yaitu pada bulan: *${item.riwayatBulanDetailList}*), kami sangat mengharapkan kerja sama Bapak/Ibu untuk melakukan pembayaran tepat waktu sebelum tanggal 20 guna menghindari pemutusan otomatis (Shunt Trip) maupun sanksi pembongkaran rampung.\n\n`;
 
     return (
-      'Yth. Bpk/Ibu *' + item.nama + '* (IDPEL: ' + item.idpel + '),\n\n' +
-      'Kami dari petugas PLN UP3 Jatinegara menginformasikan bahwa tagihan rekening listrik untuk bulan *' + item.bulan + ' 2026* dengan daya ' + formatNumber(item.daya) + ' VA sebesar *' + formatRupiah(item.rptag) + '* ' + statusKalimat + '\n\n' +
+      `Yth. Bpk/Ibu *${item.nama}* (IDPEL: ${item.idpel}),\n\n` +
+      `Kami dari petugas PLN UP3 Jatinegara menginformasikan bahwa tagihan rekening listrik untuk bulan *${item.bulan} 2026* dengan daya ${formatNumber(item.daya)} VA sebesar *${formatRupiah(item.rptag)}* ${statusKalimat}\n\n` +
       edukasiKalimat +
-      'Terima kasih atas kerja sama dan perhatian Bapak/Ibu dalam membayar tagihan listrik tepat waktu sebelum tanggal 20.\n\n' +
-      '_Salam hangat,_\n*Tim Pelayanan Pelanggan PLN UP3 Jatinegara*'
+      `Terima kasih atas kerja sama dan perhatian Bapak/Ibu dalam membayar tagihan listrik tepat waktu sebelum tanggal 20.\n\n` +
+      `_Salam hangat,_\n*Tim Pelayanan Pelanggan PLN UP Jatinegara*`
     );
   };
 
@@ -347,7 +332,11 @@ export function renderPageSosialisasi(container, allRecords = []) {
     const selectedTglLunas = document.getElementById('filter-sos-tgl-lunas').value;
     const query = document.getElementById('search-sos-input').value.toLowerCase().trim();
 
-    let rows = evaluatedRecords.filter((r) => r.isNunggak && r.bulan === selectedBulan);
+    let rows = evaluatedRecords.filter((r) => r.isNunggak);
+
+    if (selectedBulan !== 'ALL') {
+      rows = rows.filter((r) => r.bulan === selectedBulan);
+    }
 
     if (selectedStatus !== 'ALL') {
       rows = rows.filter((r) => r.statusType === selectedStatus);
@@ -361,7 +350,7 @@ export function renderPageSosialisasi(container, allRecords = []) {
     }
 
     if (query) {
-      rows = rows.filter((r) => (r.idpel + ' ' + r.nama + ' ' + r.alamat).toLowerCase().includes(query));
+      rows = rows.filter((r) => `${r.idpel} ${r.nama} ${r.alamat}`.toLowerCase().includes(query));
     }
 
     const processedRows = rows.map((r) => {
@@ -379,8 +368,8 @@ export function renderPageSosialisasi(container, allRecords = []) {
         .map((item) => {
           const tgl = item.formattedTglLunas || formatTanggalIndo(item.tanggalLunas);
           return item.isLunas && tgl && tgl !== '-'
-            ? item.bulan + ' (Lunas ' + tgl + ')'
-            : item.bulan + ' (Belum Lunas)';
+            ? `${item.bulan} (Lunas ${tgl})`
+            : `${item.bulan} (Belum Lunas)`;
         })
         .join(', ');
 
@@ -437,26 +426,13 @@ export function renderPageSosialisasi(container, allRecords = []) {
 
     const tbody = document.getElementById('tbody-sosialisasi');
     if (finalRows.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="py-8 text-center text-slate-500">Tidak ada data penunggak yang sesuai dengan filter.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-slate-500">Tidak ada data penunggak yang sesuai dengan filter.</td></tr>`;
       return;
     }
 
     tbody.innerHTML = finalRows
       .map((r) => {
         const tglLunasLabel = r.formattedTglLunas || formatTanggalIndo(r.tanggalLunas);
-        const statusBadgeHtml =
-          r.statusType === 'BELUM_LUNAS'
-            ? '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span><span>Belum Lunas</span></span>'
-            : '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span><span>Lunas &bull; ' + tglLunasLabel + '</span></span>';
-
-        const freqClass = r.isBaruPertamaKali
-          ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30'
-          : 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30';
-
-        const freqLabel = r.isBaruPertamaKali
-          ? 'Baru (1x Tunggak)'
-          : 'Berulang (' + r.riwayatTotal + 'x Bulan)';
-
         return `
       <tr>
         <td class="py-3 px-4 font-bold text-slate-300 whitespace-nowrap">${r.bulan}</td>
@@ -467,16 +443,32 @@ export function renderPageSosialisasi(container, allRecords = []) {
         <td class="py-3 px-4 font-semibold text-amber-300 whitespace-nowrap">${r.tarif} / ${formatNumber(r.daya)} VA</td>
         <td class="py-3 px-4 font-semibold text-purple-300 whitespace-nowrap">${r.daerah}</td>
         <td class="py-3 px-4 text-right font-extrabold text-rose-400 whitespace-nowrap">${formatRupiah(r.rptag)}</td>
-        <td class="py-3 px-4 text-center whitespace-nowrap">${statusBadgeHtml}</td>
+        <td class="py-3 px-4 text-center whitespace-nowrap">
+          ${
+            r.statusType === 'BELUM_LUNAS'
+              ? `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 whitespace-nowrap">
+                   <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                   <span>Belum Lunas</span>
+                 </span>`
+              : `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 whitespace-nowrap">
+                   <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                   <span>Lunas &bull; ${tglLunasLabel}</span>
+                 </span>`
+          }
+        </td>
         <td class="py-3 px-4 text-center whitespace-nowrap">
           <button
             type="button"
             data-idpel="${r.idpel}"
             data-bulan="${r.bulan}"
             title="Klik untuk melihat rincian bulan menunggak"
-            class="btn-detail-frekuensi inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${freqClass}"
+            class="btn-detail-frekuensi inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition cursor-pointer whitespace-nowrap ${
+              r.isBaruPertamaKali
+                ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30'
+                : 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30'
+            }"
           >
-            <span>${freqLabel}</span>
+            <span>${r.isBaruPertamaKali ? 'Baru (1x Tunggak)' : `Berulang (${r.riwayatTotal}x Bulan)`}</span>
             <i data-lucide="info" class="w-3.5 h-3.5 opacity-80"></i>
           </button>
         </td>
@@ -491,7 +483,7 @@ export function renderPageSosialisasi(container, allRecords = []) {
       })
       .join('');
 
-    // Event Klik Badge Frekuensi
+    // Event Klik Badge Frekuensi: Pop-up Rincian Riwayat Bulan Menunggak
     tbody.querySelectorAll('.btn-detail-frekuensi').forEach((btn) => {
       btn.addEventListener('click', () => {
         const idpel = btn.getAttribute('data-idpel');
@@ -506,51 +498,28 @@ export function renderPageSosialisasi(container, allRecords = []) {
           .map((rec, i) => {
             const tglLunasRec = rec.formattedTglLunas || formatTanggalIndo(rec.tanggalLunas);
             const isSudahLunas = rec.isLunas && tglLunasRec && tglLunasRec !== '-';
-            const boxCls = isSudahLunas
-              ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-              : 'bg-rose-500/10 text-rose-400 border-rose-500/30';
-            const numCls = isSudahLunas ? 'bg-amber-500/20' : 'bg-rose-500/20';
-            const statusTxt = isSudahLunas ? 'Lunas ' + tglLunasRec : 'Belum Lunas';
 
-            return `
-              <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border ${boxCls}">
-                <span class="w-4 h-4 rounded-full ${numCls} flex items-center justify-center text-[10px] font-extrabold">${i + 1}</span>
-                <span>${rec.bulan} 2026</span>
-                <span class="opacity-50">&bull;</span>
-                <span class="text-[11px] font-semibold">${statusTxt}</span>
-              </div>
-            `;
+            return `<div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold border ${
+              isSudahLunas
+                ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                : 'bg-rose-500/10 text-rose-400 border-rose-500/30'
+            }">
+              <span class="w-4 h-4 rounded-full ${
+                isSudahLunas ? 'bg-amber-500/20' : 'bg-rose-500/20'
+              } flex items-center justify-center text-[10px] font-extrabold">${i + 1}</span>
+              <span>${rec.bulan} 2026</span>
+              <span class="opacity-50">&bull;</span>
+              <span class="text-[11px] font-semibold">${isSudahLunas ? `Lunas ${tglLunasRec}` : 'Belum Lunas'}</span>
+            </div>`;
           })
           .join('');
-
-        const rowsHistoryHtml = item.recordsUpToCurrentMonth
-          .map((rec, idx) => {
-            const tglLunasRec = rec.formattedTglLunas || formatTanggalIndo(rec.tanggalLunas);
-            const badgeStatusRec = rec.isLunas
-              ? '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span><span>Lunas > Tgl 20 &bull; ' + tglLunasRec + '</span></span>'
-              : '<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 whitespace-nowrap"><span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span><span>Belum Lunas</span></span>';
-
-            return `
-              <tr class="bg-slate-950">
-                <td class="py-3 px-4 font-bold text-slate-400 whitespace-nowrap">${idx + 1}</td>
-                <td class="py-3 px-4 font-extrabold text-white whitespace-nowrap">${rec.bulan} 2026</td>
-                <td class="py-3 px-4 text-right font-bold text-amber-400 whitespace-nowrap">${formatRupiah(rec.rptag)}</td>
-                <td class="py-3 px-4 font-semibold text-slate-300 whitespace-nowrap">${rec.eksekusiTE || '-'}</td>
-                <td class="py-3 px-4 text-center whitespace-nowrap">${badgeStatusRec}</td>
-              </tr>
-            `;
-          })
-          .join('');
-
-        const iconHeaderCls = item.isBaruPertamaKali
-          ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-          : 'bg-rose-500/20 text-rose-400 border-rose-500/30';
 
         const detailHtml = `
           <div class="text-left text-xs">
+            <!-- Header Modal -->
             <div class="px-6 py-4 bg-slate-900/60 border-b border-slate-800 flex items-center justify-between">
               <div class="flex items-center gap-3">
-                <div class="w-9 h-9 rounded-xl ${iconHeaderCls} border flex items-center justify-center shrink-0">
+                <div class="w-9 h-9 rounded-xl ${item.isBaruPertamaKali ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'} border flex items-center justify-center shrink-0">
                   <i data-lucide="history" class="w-5 h-5"></i>
                 </div>
                 <div>
@@ -563,7 +532,9 @@ export function renderPageSosialisasi(container, allRecords = []) {
               </button>
             </div>
 
+            <!-- Konten Utama -->
             <div class="p-6 space-y-4">
+              <!-- Kartu Info Pelanggan -->
               <div class="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <span class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Identitas Pelanggan</span>
@@ -578,11 +549,12 @@ export function renderPageSosialisasi(container, allRecords = []) {
                 </div>
               </div>
 
+              <!-- Box Penjelasan Bulan Menunggak -->
               <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2.5">
                 <div class="flex items-center gap-2 text-slate-200 font-medium">
                   <i data-lucide="alert-circle" class="w-4 h-4 text-rose-400 shrink-0"></i>
                   <span>
-                    Sampai periode <strong class="text-white">${item.bulan} 2026</strong>, pelanggan ini tercatat menunggak sebanyak
+                    Sampai periode <strong class="text-white">${item.bulan} 2026</strong>, pelanggan ini tercatat menunggak (belum lunas / bayar lewat tanggal 20) sebanyak
                     <strong class="text-rose-400 underline">${item.riwayatTotal} kali (bulan)</strong>, yaitu pada:
                   </span>
                 </div>
@@ -591,6 +563,7 @@ export function renderPageSosialisasi(container, allRecords = []) {
                 </div>
               </div>
 
+              <!-- Tabel Rincian Tunggakan per Bulan -->
               <div class="overflow-x-auto rounded-xl border border-slate-800">
                 <table class="w-full text-left border-collapse">
                   <thead>
@@ -603,7 +576,32 @@ export function renderPageSosialisasi(container, allRecords = []) {
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-800/70">
-                    ${rowsHistoryHtml}
+                    ${item.recordsUpToCurrentMonth
+                      .map((rec, idx) => {
+                        const tglLunasRec = rec.formattedTglLunas || formatTanggalIndo(rec.tanggalLunas);
+                        return `
+                      <tr class="bg-slate-950">
+                        <td class="py-3 px-4 font-bold text-slate-400 whitespace-nowrap">${idx + 1}</td>
+                        <td class="py-3 px-4 font-extrabold text-white whitespace-nowrap">${rec.bulan} 2026</td>
+                        <td class="py-3 px-4 text-right font-bold text-amber-400 whitespace-nowrap">${formatRupiah(rec.rptag)}</td>
+                        <td class="py-3 px-4 font-semibold text-slate-300 whitespace-nowrap">${rec.eksekusiTE || '-'}</td>
+                        <td class="py-3 px-4 text-center whitespace-nowrap">
+                          ${
+                            rec.isLunas
+                              ? `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 whitespace-nowrap">
+                                   <span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                                   <span>Lunas > Tgl 20 &bull; ${tglLunasRec}</span>
+                                 </span>`
+                              : `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 whitespace-nowrap">
+                                   <span class="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                                   <span>Belum Lunas</span>
+                                 </span>`
+                          }
+                        </td>
+                      </tr>
+                    `;
+                      })
+                      .join('')}
                   </tbody>
                   <tfoot>
                     <tr class="bg-slate-900/60 border-t border-slate-800 font-extrabold">
@@ -616,6 +614,7 @@ export function renderPageSosialisasi(container, allRecords = []) {
               </div>
             </div>
 
+            <!-- Footer Modal -->
             <div class="px-6 py-4 bg-slate-900/60 border-t border-slate-800 flex items-center justify-between gap-3">
               <span class="text-[11px] text-slate-400">Klik tombol di kanan untuk membuat pesan edukasi WA</span>
               <div class="flex items-center gap-2">
@@ -667,31 +666,30 @@ export function renderPageSosialisasi(container, allRecords = []) {
     if (window.lucide) window.lucide.createIcons();
   };
 
-  // Inisialisasi awal opsi filter dinamis (otomatis bulan Januari)
+  // Inisialisasi awal opsi filter dinamis
   updateKategoriOptions();
   updateTanggalLunasOptions();
 
   // Event Listeners
-  document.getElementById('filter-sos-bulan')?.addEventListener('change', () => {
+  document.getElementById('filter-sos-bulan').addEventListener('change', () => {
     updateKategoriOptions();
     updateTanggalLunasOptions();
     updateView();
   });
 
-  document.getElementById('filter-sos-kategori')?.addEventListener('change', updateView);
+  document.getElementById('filter-sos-kategori').addEventListener('change', updateView);
 
-  document.getElementById('filter-sos-status')?.addEventListener('change', () => {
+  document.getElementById('filter-sos-status').addEventListener('change', () => {
     updateTanggalLunasOptions();
     updateView();
   });
 
-  document.getElementById('filter-sos-tgl-lunas')?.addEventListener('change', updateView);
-  document.getElementById('search-sos-input')?.addEventListener('input', updateView);
+  document.getElementById('filter-sos-tgl-lunas').addEventListener('change', updateView);
+  document.getElementById('search-sos-input').addEventListener('input', updateView);
 
   updateView();
 }
 
-function allDataSorted(records, monthsOrder) {
-  if (!Array.isArray(records)) return [];
-  return [...records].sort((a, b) => monthsOrder.indexOf(a.bulan) - monthsOrder.indexOf(b.bulan));
+function allDataSorted(records) {
+  return [...records].sort((a, b) => CONFIG.MONTH_ORDER.indexOf(a.bulan) - CONFIG.MONTH_ORDER.indexOf(b.bulan));
 }
