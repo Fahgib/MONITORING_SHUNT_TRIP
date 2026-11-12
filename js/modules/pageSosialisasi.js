@@ -251,7 +251,7 @@ export function renderPageSosialisasi(container, allRecords) {
 
     return (
       `Yth. Bpk/Ibu *${item.nama}* (IDPEL: ${item.idpel}),\n\n` +
-      `Kami dari petugas PLN UPJ Jatinegara menginformasikan bahwa tagihan rekening listrik untuk bulan *${item.bulan} 2026* dengan daya ${formatNumber(item.daya)} VA sebesar *${formatRupiah(item.rptag)}* ${statusKalimat}\n\n` +
+      `Kami dari petugas PLN UP3 Jatinegara menginformasikan bahwa tagihan rekening listrik untuk bulan *${item.bulan} 2026* dengan daya ${formatNumber(item.daya)} VA sebesar *${formatRupiah(item.rptag)}* ${statusKalimat}\n\n` +
       edukasiKalimat +
       `Terima kasih atas kerja sama dan perhatian Bapak/Ibu dalam membayar tagihan listrik tepat waktu sebelum tanggal 20.\n\n` +
       `_Salam hangat,_\n*Tim Pelayanan Pelanggan PLN UPJ Jatinegara*`
