@@ -6,8 +6,31 @@ let chartBulanan = null;
 let chartEksekusi = null;
 
 export function renderPageOverview(container, records) {
-  const totalPelanggan = records.length;
-  const unikPelanggan = new Set(records.map((r) => r.idpel)).size;
+  const totalBarisTransaksi = records.length;
+
+  // Mengelompokkan berdasarkan IDPEL unik agar pelanggan yang sama dihitung 1 kali
+  const mapPelangganUnik = new Map();
+  records.forEach((r) => {
+    if (!mapPelangganUnik.has(r.idpel)) {
+      mapPelangganUnik.set(r.idpel, {
+        idpel: r.idpel,
+        tarif: r.tarif,
+        daerah: r.daerah,
+        daya: r.daya,
+        masihAdaBelumLunas: !r.isLunas
+      });
+    } else {
+      const existing = mapPelangganUnik.get(r.idpel);
+      if (!r.isLunas) existing.masihAdaBelumLunas = true;
+    }
+  });
+
+  const listPelangganUnik = Array.from(mapPelangganUnik.values());
+  const totalPelangganUnik = listPelangganUnik.length;
+  const pelangganUnikBelumLunas = listPelangganUnik.filter((p) => p.masihAdaBelumLunas).length;
+  const pelangganUnikLunas = totalPelangganUnik - pelangganUnikBelumLunas;
+
+  // Untuk Rupiah, Daya, dan Eksekusi tetap dijumlahkan seluruhnya dari semua baris
   const lunasList = records.filter((r) => r.isLunas);
   const belumList = records.filter((r) => !r.isLunas);
 
@@ -21,26 +44,34 @@ export function renderPageOverview(container, records) {
   const shuntripCount = records.filter((r) => r.eksekusiTE === 'Shuntrip').length;
   const modemOffCount = records.filter((r) => r.eksekusiTE === 'Modem Off').length;
   const daerahList = rekapPerDaerah(records);
-  const persenLunas = totalPelanggan ? ((lunasList.length / totalPelanggan) * 100).toFixed(1) : 0;
+
+  const persenLunasPelanggan = totalPelangganUnik
+    ? ((pelangganUnikLunas / totalPelangganUnik) * 100).toFixed(1)
+    : 0;
+
+  const unikR3 = listPelangganUnik.filter((p) => p.tarif === 'R3').length;
+  const unikB2 = listPelangganUnik.filter((p) => p.tarif === 'B2').length;
+  const unikTebet = listPelangganUnik.filter((p) => p.daerah === 'TEBET').length;
+  const unikCipinang = listPelangganUnik.filter((p) => p.daerah === 'CIPINANG').length;
 
   container.innerHTML = `
-    <!-- 5 KARTU PILAR UTAMA DASBOR MAS ANDRE -->
+    <!-- 5 KARTU PILAR UTAMA -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-      <!-- 1. Jumlah Pelanggan -->
+      <!-- 1. Jumlah Pelanggan (IDPEL Unik Tanpa Berulang) -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Jumlah Pelanggan</span>
           <div class="p-2 rounded-lg bg-cyan-500/15 text-cyan-400"><i data-lucide="users" class="w-5 h-5"></i></div>
         </div>
-        <p class="text-2xl font-extrabold text-white mt-3">${formatNumber(totalPelanggan)}</p>
-        <p class="text-xs text-slate-400 mt-1">IDPEL Unik: <strong class="text-slate-200">${formatNumber(unikPelanggan)}</strong></p>
+        <p class="text-2xl font-extrabold text-white mt-3">${formatNumber(totalPelangganUnik)}</p>
+        <p class="text-xs text-slate-400 mt-1">Akumulasi Tagihan: <strong class="text-slate-200">${formatNumber(totalBarisTransaksi)}x</strong></p>
         <div class="mt-3 pt-3 border-t border-slate-800/80 flex justify-between text-xs">
-          <span class="text-emerald-400 font-semibold">Lunas: ${formatNumber(lunasList.length)} (${persenLunas}%)</span>
-          <span class="text-rose-400 font-semibold">Sisa: ${formatNumber(belumList.length)}</span>
+          <span class="text-emerald-400 font-semibold">Lunas: ${formatNumber(pelangganUnikLunas)} (${persenLunasPelanggan}%)</span>
+          <span class="text-rose-400 font-semibold">Sisa: ${formatNumber(pelangganUnikBelumLunas)}</span>
         </div>
       </div>
 
-      <!-- 2. Total Rupiah -->
+      <!-- 2. Total Rupiah (Tetap Dijumlahkan Semua) -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Rupiah</span>
@@ -54,7 +85,7 @@ export function renderPageOverview(container, records) {
         </div>
       </div>
 
-      <!-- 3. Kapasitas Daya -->
+      <!-- 3. Kapasitas Daya (Tetap Dijumlahkan) -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Daya</span>
@@ -63,12 +94,12 @@ export function renderPageOverview(container, records) {
         <p class="text-2xl font-extrabold text-white mt-3">${totalDayaMVA} MVA</p>
         <p class="text-xs text-slate-400 mt-1">${formatNumber(totalDayaVA)} VA Terpasang</p>
         <div class="mt-3 pt-3 border-t border-slate-800/80 flex justify-between text-xs">
-          <span class="text-amber-300 font-semibold">R3: ${formatNumber(records.filter(r => r.tarif === 'R3').length)}</span>
-          <span class="text-sky-300 font-semibold">B2: ${formatNumber(records.filter(r => r.tarif === 'B2').length)}</span>
+          <span class="text-amber-300 font-semibold">R3: ${formatNumber(unikR3)} Plg</span>
+          <span class="text-sky-300 font-semibold">B2: ${formatNumber(unikB2)} Plg</span>
         </div>
       </div>
 
-      <!-- 4. Lingkup Daerah -->
+      <!-- 4. Lingkup Daerah (Pelanggan Unik per Daerah) -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Lingkup Daerah</span>
@@ -77,12 +108,12 @@ export function renderPageOverview(container, records) {
         <p class="text-2xl font-extrabold text-white mt-3">${daerahList.length} Kawasan</p>
         <p class="text-xs text-slate-400 mt-1 truncate">Tertinggi: <strong class="text-purple-300">${daerahList[0]?.daerah || '-'}</strong></p>
         <div class="mt-3 pt-3 border-t border-slate-800/80 flex justify-between text-xs">
-          <span class="text-slate-300">Tebet: ${formatNumber(records.filter(r => r.daerah === 'TEBET').length)}</span>
-          <span class="text-slate-300">Cipinang: ${formatNumber(records.filter(r => r.daerah === 'CIPINANG').length)}</span>
+          <span class="text-slate-300">Tebet: ${formatNumber(unikTebet)}</span>
+          <span class="text-slate-300">Cipinang: ${formatNumber(unikCipinang)}</span>
         </div>
       </div>
 
-      <!-- 5. Status Eksekusi Shunt Trip -->
+      <!-- 5. Status Eksekusi Shunt Trip (Tetap Dijumlahkan Semua) -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Eksekusi TE</span>
@@ -92,7 +123,7 @@ export function renderPageOverview(container, records) {
         <p class="text-xs text-slate-400 mt-1">Modem Off: <strong class="text-amber-300">${formatNumber(modemOffCount)}</strong></p>
         <div class="mt-3 pt-3 border-t border-slate-800/80 flex justify-between text-xs">
           <span class="text-cyan-400 font-semibold">Req Niaga: ${formatNumber(records.filter(r => r.requestNiaga === 'Request').length)}</span>
-          <span class="text-slate-400">Tanpa Eks: ${formatNumber(totalPelanggan - shuntripCount - modemOffCount)}</span>
+          <span class="text-slate-400">Tanpa Eks: ${formatNumber(totalBarisTransaksi - shuntripCount - modemOffCount)}</span>
         </div>
       </div>
     </div>
@@ -125,7 +156,7 @@ export function renderPageOverview(container, records) {
       <div class="p-5 border-b border-slate-800 flex items-center justify-between">
         <div>
           <h3 class="text-base font-bold text-white">Tabel Rekapitulasi Bulanan AMR 2026</h3>
-          <p class="text-xs text-slate-400">Rincian pelanggan, eksekusi Shuntrip, Modem Off, dan realisasi pelunasan Rupiah</p>
+          <p class="text-xs text-slate-400">Rincian pelanggan unik per bulan, eksekusi Shuntrip, Modem Off, dan realisasi pelunasan Rupiah</p>
         </div>
       </div>
       <div class="overflow-x-auto">
@@ -133,7 +164,7 @@ export function renderPageOverview(container, records) {
           <thead>
             <tr>
               <th class="py-3.5 px-4">Bulan</th>
-              <th class="py-3.5 px-4 text-right">Pelanggan</th>
+              <th class="py-3.5 px-4 text-right">Pelanggan (IDPEL)</th>
               <th class="py-3.5 px-4 text-right">Shuntrip</th>
               <th class="py-3.5 px-4 text-right">Modem Off</th>
               <th class="py-3.5 px-4 text-right">Sudah Lunas</th>
@@ -149,11 +180,11 @@ export function renderPageOverview(container, records) {
     </div>
   `;
 
-  renderTabelDanGrafikBulanan(records, shuntripCount, modemOffCount, totalPelanggan);
+  renderTabelDanGrafikBulanan(records, shuntripCount, modemOffCount, totalBarisTransaksi);
   if (window.lucide) window.lucide.createIcons();
 }
 
-function renderTabelDanGrafikBulanan(records, shuntripCount, modemOffCount, totalPelanggan) {
+function renderTabelDanGrafikBulanan(records, shuntripCount, modemOffCount, totalBarisTransaksi) {
   const monthsPresent = CONFIG.MONTH_ORDER.filter((m) => records.some((r) => r.bulan === m));
   const tbody = document.getElementById('tbody-rekap-bulanan');
   const labels = [];
@@ -162,6 +193,7 @@ function renderTabelDanGrafikBulanan(records, shuntripCount, modemOffCount, tota
 
   tbody.innerHTML = monthsPresent.map((bulan) => {
     const items = records.filter((r) => r.bulan === bulan);
+    const unikIdpelBulan = new Set(items.map((r) => r.idpel)).size;
     const lunas = items.filter((r) => r.isLunas);
     const belum = items.filter((r) => !r.isLunas);
     const rpTotal = items.reduce((a, b) => a + b.rptag, 0);
@@ -177,7 +209,7 @@ function renderTabelDanGrafikBulanan(records, shuntripCount, modemOffCount, tota
     return `
       <tr>
         <td class="py-3 px-4 font-bold text-white">${bulan}</td>
-        <td class="py-3 px-4 text-right font-semibold">${formatNumber(items.length)}</td>
+        <td class="py-3 px-4 text-right font-semibold">${formatNumber(unikIdpelBulan)}</td>
         <td class="py-3 px-4 text-right text-cyan-400">${formatNumber(shunt)}</td>
         <td class="py-3 px-4 text-right text-amber-400">${formatNumber(modem)}</td>
         <td class="py-3 px-4 text-right text-emerald-400 font-semibold">${formatNumber(lunas.length)}</td>
@@ -234,7 +266,7 @@ function renderTabelDanGrafikBulanan(records, shuntripCount, modemOffCount, tota
   if (chartEksekusi) chartEksekusi.destroy();
   const ctx2 = document.getElementById('chart-overview-eksekusi');
   if (ctx2) {
-    const belumEks = Math.max(0, totalPelanggan - shuntripCount - modemOffCount);
+    const belumEks = Math.max(0, totalBarisTransaksi - shuntripCount - modemOffCount);
     chartEksekusi = new window.Chart(ctx2, {
       type: 'doughnut',
       data: {

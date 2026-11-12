@@ -30,6 +30,8 @@ export function rekapPerDaerah(records) {
     if (!map[d]) {
       map[d] = {
         daerah: d,
+        idpelSet: new Set(),
+        idpelBelumLunasSet: new Set(),
         totalPelanggan: 0,
         lunas: 0,
         belumLunas: 0,
@@ -41,19 +43,43 @@ export function rekapPerDaerah(records) {
         modemOff: 0
       };
     }
-    map[d].totalPelanggan += 1;
+
+    // Jika IDPEL ini baru pertama kali tercatat di daerah ini, tambahkan Daya terpasangnya
+    if (!map[d].idpelSet.has(item.idpel)) {
+      map[d].idpelSet.add(item.idpel);
+      map[d].totalDayaVA += item.daya;
+    }
+    if (!item.isLunas) {
+      map[d].idpelBelumLunasSet.add(item.idpel);
+    }
+
+    // Rupiah dan jumlah tindakan eksekusi tetap dijumlahkan seluruhnya
     map[d].totalRupiah += item.rptag;
-    map[d].totalDayaVA += item.daya;
     if (item.isLunas) {
-      map[d].lunas += 1;
       map[d].rupiahLunas += item.rptag;
     } else {
-      map[d].belumLunas += 1;
       map[d].rupiahBelum += item.rptag;
     }
     if (item.eksekusiTE === 'Shuntrip') map[d].shuntrip += 1;
     if (item.eksekusiTE === 'Modem Off') map[d].modemOff += 1;
   });
 
-  return Object.values(map).sort((a, b) => b.totalPelanggan - a.totalPelanggan);
+  return Object.values(map)
+    .map((entry) => {
+      const totalUnik = entry.idpelSet.size;
+      const belumUnik = entry.idpelBelumLunasSet.size;
+      return {
+        daerah: entry.daerah,
+        totalPelanggan: totalUnik,
+        lunas: Math.max(0, totalUnik - belumUnik),
+        belumLunas: belumUnik,
+        totalRupiah: entry.totalRupiah,
+        rupiahLunas: entry.rupiahLunas,
+        rupiahBelum: entry.rupiahBelum,
+        totalDayaVA: entry.totalDayaVA,
+        shuntrip: entry.shuntrip,
+        modemOff: entry.modemOff
+      };
+    })
+    .sort((a, b) => b.totalPelanggan - a.totalPelanggan);
 }
