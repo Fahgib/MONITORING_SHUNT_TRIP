@@ -6,7 +6,7 @@ import { renderPagePelangganDaya } from './modules/pagePelangganDaya.js';
 import { renderPageLingkupDaerah } from './modules/pageLingkupDaerah.js';
 import { renderPageReportHarian } from './modules/pageReportHarian.js';
 import { renderPageHabitTracker } from './modules/pageHabitTracker.js';
-
+import { renderPageSosialisasi } from './modules/pageSosialisasi.js';
 
 const STATE = {
   allRecords: [],
@@ -34,6 +34,10 @@ const PAGE_META = {
   'habit-tracker': {
     title: 'Detektor Pelanggan Langganan Nunggak',
     subtitle: 'Identifikasi IDPEL yang berulang kali masuk daftar tunggakan di berbagai bulan'
+  },
+  'sosialisasi-penunggak': {
+    title: 'Pusat Analisis Penunggak & Sosialisasi Pelanggan',
+    subtitle: 'Identifikasi pelanggan penunggak baru per bulan untuk pendekatan persuasif dan edukasi pembayaran tepat waktu'
   },
   'prioritas-lapangan': {
     title: 'Target Prioritas Eksekusi & Navigasi Maps Lapangan',
@@ -360,6 +364,8 @@ function renderActivePage() {
     });
   } else if (STATE.activePage === 'habit-tracker') {
     renderPageHabitTracker(container, STATE.allRecords);
+  } else if (STATE.activePage === 'sosialisasi-penunggak') {
+    renderPageSosialisasi(container, STATE.allRecords);
   } else if (STATE.activePage === 'prioritas-lapangan') {
     renderPagePrioritasLapangan(container, records);
   }
@@ -423,7 +429,7 @@ function setupEventListeners() {
         localStorage.setItem('mas_andre_theme', 'dark');
       }
       updateThemeButtonLabel();
-      if ( window.lucide ) window.lucide.createIcons();
+      if (window.lucide) window.lucide.createIcons();
     });
   }
 
