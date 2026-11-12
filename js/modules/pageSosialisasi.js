@@ -1,5 +1,5 @@
-import { CONFIG } from '../../config.js';
-import { formatRupiah, formatNumber, formatTanggalIndo } from '../../utils/formatter.js';
+import { CONFIG } from '../config.js';
+import { formatRupiah, formatNumber, formatTanggalIndo } from '../utils/formatter.js';
 
 export function renderPageSosialisasi(container, allRecords) {
   const months = CONFIG.MONTH_ORDER;
@@ -109,7 +109,6 @@ export function renderPageSosialisasi(container, allRecords) {
 
     const totalRpTunggakan = finalRows.reduce((a, b) => a + b.rptag, 0);
     const jumlahBaru = finalRows.filter((r) => r.isBaruPertamaKali).length;
-    const jumlahBerulang = finalRows.length - jumlahBaru;
 
     document.getElementById('sos-stats-container').innerHTML = `
       <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
@@ -165,7 +164,7 @@ export function renderPageSosialisasi(container, allRecords) {
         const item = finalRows.find((x) => x.idpel === idpel && x.bulan === bulan);
         if (!item) return;
 
-        const teksSosialisasi = 
+        const teksSosialisasi =
           `Yth. Bpk/Ibu *${item.nama}* (IDPEL: ${item.idpel}),\n\n` +
           `Kami dari petugas PLN UPJ Jatinegara menginformasikan bahwa tagihan rekening listrik untuk bulan *${item.bulan} 2026* dengan daya ${formatNumber(item.daya)} VA sebesar *${formatRupiah(item.rptag)}* terpantau belum melakukan pelunasan.\n\n` +
           `Mengingat ini adalah kendala penunggakan pertama, kami ingin bersilaturahmi dan mendengar kendala Bapak/Ibu sekaligus membantu memberikan penjelasan terkait kemudahan layanan pembayaran serta pencegahan pemutusan otomatis (Shunt Trip).\n\n` +
