@@ -4,7 +4,12 @@ import { formatRupiah, formatNumber, formatTanggalIndo } from '../utils/formatte
 // Fungsi mengecek apakah pembayaran dilakukan lewat dari tanggal 20 bulan berjalan
 function checkLatePayment(record, monthsOrder) {
   if (!record.isLunas || !record.tanggalLunas) {
-    return { isNunggak: true, statusType: 'BELUM_LUNAS', dayPaid: null };
+    return {
+      isNunggak: true,
+      statusType: 'BELUM_LUNAS',
+      dayPaid: null,
+      formattedTglLunas: null
+    };
   }
 
   const raw = String(record.tanggalLunas).trim();
@@ -33,6 +38,8 @@ function checkLatePayment(record, monthsOrder) {
     }
   }
 
+  const formattedTglLunas = formatTanggalIndo(record.tanggalLunas) || raw;
+
   if (day !== null) {
     // Jika dibayar di bulan berikutnya atau tanggal bayar > 20, tetap dihitung menunggak
     const isNextMonth = month !== null && bulanIdx !== -1 && month > bulanIdx;
@@ -41,12 +48,18 @@ function checkLatePayment(record, monthsOrder) {
     return {
       isNunggak: isAfter20,
       statusType: isAfter20 ? 'LUNAS_LEWAT_20' : 'LUNAS_TEPAT_WAKTU',
-      dayPaid: day
+      dayPaid: day,
+      formattedTglLunas
     };
   }
 
   // Jika masuk daftar monitoring tetapi format tanggal tidak standar, anggap lewat tgl 20
-  return { isNunggak: true, statusType: 'LUNAS_LEWAT_20', dayPaid: null };
+  return {
+    isNunggak: true,
+    statusType: 'LUNAS_LEWAT_20',
+    dayPaid: null,
+    formattedTglLunas
+  };
 }
 
 export function renderPageSosialisasi(container, allRecords) {
@@ -63,6 +76,7 @@ export function renderPageSosialisasi(container, allRecords) {
         </div>
 
         <div class="flex flex-wrap items-center gap-2.5">
+          <!-- Filter Bulan -->
           <div class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 flex items-center gap-2">
             <span class="text-xs text-slate-400 font-medium">Bulan:</span>
             <select id="filter-sos-bulan" class="bg-transparent text-xs font-bold text-cyan-400 focus:outline-none cursor-pointer">
@@ -71,21 +85,29 @@ export function renderPageSosialisasi(container, allRecords) {
             </select>
           </div>
 
+          <!-- Filter Frekuensi Tunggakan (Dinamis 1 - 12 mengikuti Bulan) -->
           <div class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 flex items-center gap-2">
             <span class="text-xs text-slate-400 font-medium">Kategori:</span>
             <select id="filter-sos-kategori" class="bg-transparent text-xs font-bold text-amber-400 focus:outline-none cursor-pointer">
               <option value="ALL">Semua Penunggak</option>
-              <option value="BARU">Penunggak Baru (1x)</option>
-              <option value="BERULANG">Penunggak Berulang (>1x)</option>
             </select>
           </div>
 
+          <!-- Filter Status Bayar -->
           <div class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 flex items-center gap-2">
             <span class="text-xs text-slate-400 font-medium">Status Bayar:</span>
             <select id="filter-sos-status" class="bg-transparent text-xs font-bold text-rose-400 focus:outline-none cursor-pointer">
               <option value="ALL">Semua (Belum Lunas + Lunas > Tgl 20)</option>
               <option value="BELUM_LUNAS">Hanya Belum Lunas</option>
               <option value="LUNAS_LEWAT_20">Sudah Lunas (> Tanggal 20)</option>
+            </select>
+          </div>
+
+          <!-- Filter Tanggal Pelunasan -->
+          <div class="bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 flex items-center gap-2">
+            <span class="text-xs text-slate-400 font-medium">Tgl Pelunasan:</span>
+            <select id="filter-sos-tgl-lunas" class="bg-transparent text-xs font-bold text-emerald-400 focus:outline-none cursor-pointer">
+              <option value="ALL">Semua Tanggal</option>
             </select>
           </div>
         </div>
@@ -100,7 +122,7 @@ export function renderPageSosialisasi(container, allRecords) {
       <div class="p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h4 class="text-sm font-bold text-white" id="sos-table-title">Daftar Pelanggan Menunggak (Belum Lunas & Bayar > Tanggal 20)</h4>
-          <p class="text-xs text-slate-400">Tekan tombol badge pada kolom <strong>Status Frekuensi</strong> untuk membuka rincian riwayat bulan menunggak</p>
+          <p class="text-xs text-slate-400">Tekan tombol badge pada kolom <strong>Status Frekuensi</strong> untuk membuka rincian riwayat bulan & tanggal pelunasan</p>
         </div>
         <input id="search-sos-input" type="text" placeholder="Cari IDPEL / Nama Pelanggan..." class="bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500 w-full sm:w-64" />
       </div>
@@ -113,7 +135,7 @@ export function renderPageSosialisasi(container, allRecords) {
               <th class="py-3.5 px-4">Tarif / Daya</th>
               <th class="py-3.5 px-4">Kawasan</th>
               <th class="py-3.5 px-4 text-right">Tagihan (Rp)</th>
-              <th class="py-3.5 px-4 text-center">Status Pembayaran</th>
+              <th class="py-3.5 px-4 text-center">Status & Tgl Pelunasan</th>
               <th class="py-3.5 px-4 text-center">Status Frekuensi (s.d. Bulan Ini)</th>
               <th class="py-3.5 px-4 text-center">Aksi Sosialisasi</th>
             </tr>
@@ -146,16 +168,97 @@ export function renderPageSosialisasi(container, allRecords) {
     }
   });
 
-  // Fungsi pembuat teks WhatsApp yang menyesuaikan status bayar (> tgl 20 vs belum lunas)
+  // Fungsi memperbarui opsi dropdown Kategori Nunggak (1 s.d. 12 mengikuti bulan)
+  const updateKategoriOptions = () => {
+    const selectedBulan = document.getElementById('filter-sos-bulan').value;
+    const katSelect = document.getElementById('filter-sos-kategori');
+    const prevValue = katSelect.value;
+
+    // Jika pilih bulan tertentu: Januari = 1, Februari = 2, Maret = 3, dst.
+    // Jika pilih ALL: maksimal sesuai jumlah bulan (12)
+    const maxNunggak = selectedBulan === 'ALL' ? months.length : months.indexOf(selectedBulan) + 1;
+
+    let optionsHtml = `<option value="ALL">Semua Penunggak</option>`;
+
+    for (let i = 1; i <= maxNunggak; i++) {
+      const label = i === 1 ? `Nunggak 1x (Baru)` : `Nunggak ${i}x`;
+      optionsHtml += `<option value="${i}">${label}</option>`;
+    }
+
+    if (maxNunggak > 1) {
+      optionsHtml += `<option value="BERULANG">Semua Berulang (>1x)</option>`;
+    }
+
+    katSelect.innerHTML = optionsHtml;
+
+    // Pertahankan pilihan sebelumnya jika masih valid di bulan yang baru dipilih
+    const isStillValid =
+      prevValue === 'ALL' ||
+      (prevValue === 'BERULANG' && maxNunggak > 1) ||
+      (!isNaN(parseInt(prevValue, 10)) && parseInt(prevValue, 10) <= maxNunggak);
+
+    katSelect.value = isStillValid ? prevValue : 'ALL';
+  };
+
+  // Fungsi memperbarui opsi dropdown Tanggal Pelunasan sesuai konteks bulan
+  const updateTanggalLunasOptions = () => {
+    const selectedBulan = document.getElementById('filter-sos-bulan').value;
+    const selectedStatus = document.getElementById('filter-sos-status').value;
+    const tglSelect = document.getElementById('filter-sos-tgl-lunas');
+    const prevTgl = tglSelect.value;
+
+    if (selectedStatus === 'BELUM_LUNAS') {
+      tglSelect.innerHTML = `<option value="ALL">Semua Tanggal</option>`;
+      tglSelect.value = 'ALL';
+      tglSelect.disabled = true;
+      tglSelect.classList.add('opacity-50', 'cursor-not-allowed');
+      return;
+    }
+
+    tglSelect.disabled = false;
+    tglSelect.classList.remove('opacity-50', 'cursor-not-allowed');
+
+    let relevantRows = evaluatedRecords.filter((r) => r.isNunggak && r.statusType === 'LUNAS_LEWAT_20');
+    if (selectedBulan !== 'ALL') {
+      relevantRows = relevantRows.filter((r) => r.bulan === selectedBulan);
+    }
+
+    // Kumpulkan daftar tanggal pelunasan unik
+    const uniqueDates = [];
+    const seen = new Set();
+    relevantRows.forEach((r) => {
+      const tglLabel = r.formattedTglLunas || formatTanggalIndo(r.tanggalLunas);
+      if (tglLabel && tglLabel !== '-' && !seen.has(tglLabel)) {
+        seen.add(tglLabel);
+        uniqueDates.push({
+          label: tglLabel,
+          dayPaid: r.dayPaid || 99
+        });
+      }
+    });
+
+    uniqueDates.sort((a, b) => a.dayPaid - b.dayPaid || a.label.localeCompare(b.label));
+
+    let html = `<option value="ALL">Semua Tanggal</option>`;
+    uniqueDates.forEach((d) => {
+      html += `<option value="${d.label}">${d.label}</option>`;
+    });
+
+    tglSelect.innerHTML = html;
+    tglSelect.value = seen.has(prevTgl) ? prevTgl : 'ALL';
+  };
+
+  // Fungsi pembuat teks WhatsApp yang menyesuaikan status bayar & tanggal pelunasan
   const buildWhatsappText = (item) => {
+    const tglLunasText = item.formattedTglLunas || formatTanggalIndo(item.tanggalLunas);
     const statusKalimat =
       item.statusType === 'BELUM_LUNAS'
         ? `terpantau *belum melakukan pelunasan* hingga melewati batas waktu tanggal 20.`
-        : `tercatat melakukan pelunasan pada tanggal *${formatTanggalIndo(item.tanggalLunas)}* (melewati batas jatuh tempo tanggal 20 setiap bulannya).`;
+        : `tercatat melakukan pelunasan pada tanggal *${tglLunasText}* (melewati batas jatuh tempo tanggal 20 setiap bulannya).`;
 
     const edukasiKalimat = item.isBaruPertamaKali
       ? `Mengingat ini adalah keterlambatan pertama Bapak/Ibu di tahun 2026, kami ingin bersilaturahmi sekaligus mengingatkan agar ke depannya pembayaran listrik dapat dilakukan *sebelum tanggal 20 setiap bulannya* guna menghindari pemutusan otomatis (Shunt Trip).\n\n`
-      : `Mengingat IDPEL Bapak/Ibu tercatat sudah melewati batas pembayaran tanggal 20 sebanyak *${item.riwayatTotal} kali* (yaitu pada bulan *${item.riwayatBulanList}*), kami sangat mengharapkan kerja sama Bapak/Ibu untuk melakukan pembayaran tepat waktu sebelum tanggal 20 guna menghindari pemutusan otomatis (Shunt Trip) maupun sanksi pembongkaran rampung.\n\n`;
+      : `Mengingat IDPEL Bapak/Ibu tercatat sudah melewati batas pembayaran tanggal 20 sebanyak *${item.riwayatTotal} kali* (yaitu pada bulan: *${item.riwayatBulanDetailList}*), kami sangat mengharapkan kerja sama Bapak/Ibu untuk melakukan pembayaran tepat waktu sebelum tanggal 20 guna menghindari pemutusan otomatis (Shunt Trip) maupun sanksi pembongkaran rampung.\n\n`;
 
     return (
       `Yth. Bpk/Ibu *${item.nama}* (IDPEL: ${item.idpel}),\n\n` +
@@ -240,6 +343,7 @@ export function renderPageSosialisasi(container, allRecords) {
     const selectedBulan = document.getElementById('filter-sos-bulan').value;
     const selectedKat = document.getElementById('filter-sos-kategori').value;
     const selectedStatus = document.getElementById('filter-sos-status').value;
+    const selectedTglLunas = document.getElementById('filter-sos-tgl-lunas').value;
     const query = document.getElementById('search-sos-input').value.toLowerCase().trim();
 
     // Ambil semua data yang terhitung menunggak (Belum lunas ATAU lunas > tgl 20)
@@ -251,6 +355,13 @@ export function renderPageSosialisasi(container, allRecords) {
 
     if (selectedStatus !== 'ALL') {
       rows = rows.filter((r) => r.statusType === selectedStatus);
+    }
+
+    if (selectedTglLunas !== 'ALL') {
+      rows = rows.filter((r) => {
+        const tglLabel = r.formattedTglLunas || formatTanggalIndo(r.tanggalLunas);
+        return tglLabel === selectedTglLunas;
+      });
     }
 
     if (query) {
@@ -268,24 +379,41 @@ export function renderPageSosialisasi(container, allRecords) {
       const riwayatTotal = recordsUpToCurrentMonth.length;
       const isBaruPertamaKali = riwayatTotal === 1;
       const riwayatBulanList = recordsUpToCurrentMonth.map((item) => item.bulan).join(', ');
+      const riwayatBulanDetailList = recordsUpToCurrentMonth
+        .map((item) => {
+          const tgl = item.formattedTglLunas || formatTanggalIndo(item.tanggalLunas);
+          return item.isLunas && tgl && tgl !== '-'
+            ? `${item.bulan} [Lunas: ${tgl}]`
+            : `${item.bulan} [Belum Lunas]`;
+        })
+        .join(', ');
 
       return {
         ...r,
         isBaruPertamaKali,
         riwayatTotal,
         riwayatBulanList,
+        riwayatBulanDetailList,
         recordsUpToCurrentMonth
       };
     });
 
+    // Filter berdasarkan Kategori Frekuensi (ALL, BERULANG, atau angka 1 s.d. 12)
     const finalRows = processedRows.filter((r) => {
-      if (selectedKat === 'BARU' && !r.isBaruPertamaKali) return false;
-      if (selectedKat === 'BERULANG' && r.isBaruPertamaKali) return false;
+      if (selectedKat === 'ALL') return true;
+      if (selectedKat === 'BARU') return r.riwayatTotal === 1;
+      if (selectedKat === 'BERULANG') return r.riwayatTotal > 1;
+
+      const targetFreq = parseInt(selectedKat, 10);
+      if (!isNaN(targetFreq)) {
+        return r.riwayatTotal === targetFreq;
+      }
       return true;
     });
 
     const totalRpTunggakan = finalRows.reduce((a, b) => a + b.rptag, 0);
     const jumlahBaru = finalRows.filter((r) => r.isBaruPertamaKali).length;
+    const jumlahBerulang = finalRows.length - jumlahBaru;
     const jumlahLunasTelat = finalRows.filter((r) => r.statusType === 'LUNAS_LEWAT_20').length;
     const jumlahBelumLunas = finalRows.filter((r) => r.statusType === 'BELUM_LUNAS').length;
 
@@ -302,7 +430,7 @@ export function renderPageSosialisasi(container, allRecords) {
       </div>
       <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
         <span class="text-[11px] text-slate-400 font-semibold">Penunggak Berulang (>1x Bulan)</span>
-        <p class="text-xl font-extrabold text-purple-400 mt-1">${formatNumber(finalRows.length - jumlahBaru)} Pelanggan</p>
+        <p class="text-xl font-extrabold text-purple-400 mt-1">${formatNumber(jumlahBerulang)} Pelanggan</p>
         <span class="text-[10px] text-slate-400">Sering bayar > tanggal 20</span>
       </div>
       <div class="p-4 rounded-xl bg-slate-950/80 border border-slate-800">
@@ -318,7 +446,10 @@ export function renderPageSosialisasi(container, allRecords) {
       return;
     }
 
-    tbody.innerHTML = finalRows.map((r) => `
+    tbody.innerHTML = finalRows
+      .map((r) => {
+        const tglLunasLabel = r.formattedTglLunas || formatTanggalIndo(r.tanggalLunas);
+        return `
       <tr>
         <td class="py-3 px-4 font-bold text-slate-300">${r.bulan}</td>
         <td class="py-3 px-4">
@@ -331,8 +462,14 @@ export function renderPageSosialisasi(container, allRecords) {
         <td class="py-3 px-4 text-center">
           ${
             r.statusType === 'BELUM_LUNAS'
-              ? `<span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">Belum Lunas</span>`
-              : `<span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">Lunas > Tgl 20 (${formatTanggalIndo(r.tanggalLunas)})</span>`
+              ? `<div class="inline-flex flex-col items-center">
+                   <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">Belum Lunas</span>
+                   <span class="text-[10px] text-slate-500 mt-0.5">Tgl Lunas: -</span>
+                 </div>`
+              : `<div class="inline-flex flex-col items-center">
+                   <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">Lunas > Tgl 20 (${tglLunasLabel})</span>
+                   <span class="text-[10px] text-emerald-400 font-semibold mt-0.5">Tgl Lunas: ${tglLunasLabel}</span>
+                 </div>`
           }
         </td>
         <td class="py-3 px-4 text-center">
@@ -357,7 +494,9 @@ export function renderPageSosialisasi(container, allRecords) {
           </button>
         </td>
       </tr>
-    `).join('');
+    `;
+      })
+      .join('');
 
     // Event Klik Badge Frekuensi: Pop-up Rincian Riwayat Bulan Menunggak
     tbody.querySelectorAll('.btn-detail-frekuensi').forEach((btn) => {
@@ -371,13 +510,19 @@ export function renderPageSosialisasi(container, allRecords) {
         const totalAkumulasi = item.recordsUpToCurrentMonth.reduce((sum, rec) => sum + rec.rptag, 0);
 
         const badgeBulanHtml = item.recordsUpToCurrentMonth
-          .map(
-            (rec, i) =>
-              `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
-                <span class="w-4 h-4 rounded-full bg-rose-500/20 flex items-center justify-center text-[10px]">${i + 1}</span>
-                <span>${rec.bulan} 2026</span>
-              </span>`
-          )
+          .map((rec, i) => {
+            const tglLunasRec = rec.formattedTglLunas || formatTanggalIndo(rec.tanggalLunas);
+            const infoTgl =
+              rec.isLunas && tglLunasRec && tglLunasRec !== '-'
+                ? `Lunas: ${tglLunasRec}`
+                : 'Belum Lunas';
+
+            return `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">
+              <span class="w-4 h-4 rounded-full bg-rose-500/20 flex items-center justify-center text-[10px]">${i + 1}</span>
+              <span>${rec.bulan} 2026</span>
+              <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-950/60 ${rec.isLunas ? 'text-amber-300' : 'text-rose-300'}">${infoTgl}</span>
+            </span>`;
+          })
           .join('');
 
         const detailHtml = `
@@ -438,13 +583,14 @@ export function renderPageSosialisasi(container, allRecords) {
                       <th class="py-2.5 px-3.5">Bulan Tunggakan</th>
                       <th class="py-2.5 px-3.5 text-right">Tagihan (Rp)</th>
                       <th class="py-2.5 px-3.5">Eksekusi</th>
-                      <th class="py-2.5 px-3.5 text-center">Keterangan Pelunasan</th>
+                      <th class="py-2.5 px-3.5 text-center">Tanggal & Status Pelunasan</th>
                     </tr>
                   </thead>
                   <tbody class="divide-y divide-slate-800/70">
                     ${item.recordsUpToCurrentMonth
-                      .map(
-                        (rec, idx) => `
+                      .map((rec, idx) => {
+                        const tglLunasRec = rec.formattedTglLunas || formatTanggalIndo(rec.tanggalLunas);
+                        return `
                       <tr class="bg-slate-950">
                         <td class="py-2.5 px-3.5 font-bold text-slate-400">${idx + 1}</td>
                         <td class="py-2.5 px-3.5 font-extrabold text-white">${rec.bulan} 2026</td>
@@ -453,13 +599,19 @@ export function renderPageSosialisasi(container, allRecords) {
                         <td class="py-2.5 px-3.5 text-center">
                           ${
                             rec.isLunas
-                              ? `<span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">Lunas > Tgl 20 (${formatTanggalIndo(rec.tanggalLunas)})</span>`
-                              : `<span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">Belum Lunas</span>`
+                              ? `<div class="inline-flex flex-col items-center">
+                                   <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">Lunas > Tgl 20 (${tglLunasRec})</span>
+                                   <span class="text-[10px] text-emerald-400 font-semibold mt-0.5">Tgl Bayar: ${tglLunasRec}</span>
+                                 </div>`
+                              : `<div class="inline-flex flex-col items-center">
+                                   <span class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30">Belum Lunas</span>
+                                   <span class="text-[10px] text-slate-500 mt-0.5">Belum ada tanggal bayar</span>
+                                 </div>`
                           }
                         </td>
                       </tr>
-                    `
-                      )
+                    `;
+                      })
                       .join('')}
                   </tbody>
                   <tfoot>
@@ -492,7 +644,7 @@ export function renderPageSosialisasi(container, allRecords) {
         window.Swal.fire({
           title: '',
           html: detailHtml,
-          width: 660,
+          width: 680,
           padding: '0',
           showConfirmButton: false,
           background: isDark ? '#0f172a' : '#ffffff',
@@ -525,9 +677,25 @@ export function renderPageSosialisasi(container, allRecords) {
     if (window.lucide) window.lucide.createIcons();
   };
 
-  document.getElementById('filter-sos-bulan').addEventListener('change', updateView);
+  // Inisialisasi awal opsi filter dinamis
+  updateKategoriOptions();
+  updateTanggalLunasOptions();
+
+  // Event Listeners
+  document.getElementById('filter-sos-bulan').addEventListener('change', () => {
+    updateKategoriOptions();
+    updateTanggalLunasOptions();
+    updateView();
+  });
+
   document.getElementById('filter-sos-kategori').addEventListener('change', updateView);
-  document.getElementById('filter-sos-status').addEventListener('change', updateView);
+
+  document.getElementById('filter-sos-status').addEventListener('change', () => {
+    updateTanggalLunasOptions();
+    updateView();
+  });
+
+  document.getElementById('filter-sos-tgl-lunas').addEventListener('change', updateView);
   document.getElementById('search-sos-input').addEventListener('input', updateView);
 
   updateView();
