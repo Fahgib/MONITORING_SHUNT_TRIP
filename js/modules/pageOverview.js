@@ -43,25 +43,33 @@ export function renderPageOverview(container, records) {
 
   const shuntripCount = records.filter((r) => r.eksekusiTE === 'Shuntrip').length;
   const modemOffCount = records.filter((r) => r.eksekusiTE === 'Modem Off').length;
+  const tanpaEksCount = totalBarisTransaksi - shuntripCount - modemOffCount;
+  const reqNiagaCount = records.filter((r) => r.requestNiaga === 'Request').length;
   const daerahList = rekapPerDaerah(records);
 
   const persenLunasPelanggan = totalPelangganUnik
     ? ((pelangganUnikLunas / totalPelangganUnik) * 100).toFixed(1)
     : 0;
+  const persenRupiahLunas = totalRupiah
+    ? ((rupiahLunas / totalRupiah) * 100).toFixed(1)
+    : 0;
 
   const unikR3 = listPelangganUnik.filter((p) => p.tarif === 'R3').length;
   const unikB2 = listPelangganUnik.filter((p) => p.tarif === 'B2').length;
+  const unikLainnya = totalPelangganUnik - unikR3 - unikB2;
   const unikTebet = listPelangganUnik.filter((p) => p.daerah === 'TEBET').length;
   const unikCipinang = listPelangganUnik.filter((p) => p.daerah === 'CIPINANG').length;
 
   container.innerHTML = `
-    <!-- 5 KARTU PILAR UTAMA -->
+    <!-- 5 KARTU PILAR UTAMA DENGAN IKON PENJELASAN INTERAKTIF -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
-      <!-- 1. Jumlah Pelanggan (IDPEL Unik Tanpa Berulang) -->
+      <!-- 1. Jumlah Pelanggan -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Jumlah Pelanggan</span>
-          <div class="p-2 rounded-lg bg-cyan-500/15 text-cyan-400"><i data-lucide="users" class="w-5 h-5"></i></div>
+          <button data-info="pelanggan" title="Klik untuk melihat penjelasan perhitungan Jumlah Pelanggan" class="btn-icon-info p-2 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-400 transition cursor-pointer relative group">
+            <i data-lucide="users" class="w-5 h-5"></i>
+          </button>
         </div>
         <p class="text-2xl font-extrabold text-white mt-3">${formatNumber(totalPelangganUnik)}</p>
         <p class="text-xs text-slate-400 mt-1">Akumulasi Tagihan: <strong class="text-slate-200">${formatNumber(totalBarisTransaksi)}x</strong></p>
@@ -71,11 +79,13 @@ export function renderPageOverview(container, records) {
         </div>
       </div>
 
-      <!-- 2. Total Rupiah (Tetap Dijumlahkan Semua) -->
+      <!-- 2. Total Rupiah -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Rupiah</span>
-          <div class="p-2 rounded-lg bg-emerald-500/15 text-emerald-400"><i data-lucide="wallet" class="w-5 h-5"></i></div>
+          <button data-info="rupiah" title="Klik untuk melihat penjelasan perhitungan Total Rupiah" class="btn-icon-info p-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 transition cursor-pointer">
+            <i data-lucide="wallet" class="w-5 h-5"></i>
+          </button>
         </div>
         <p class="text-2xl font-extrabold text-white mt-3" title="${formatRupiah(totalRupiah)}">${formatRupiahSingkat(totalRupiah)}</p>
         <p class="text-xs text-slate-400 mt-1 truncate">${formatRupiah(totalRupiah)}</p>
@@ -85,11 +95,13 @@ export function renderPageOverview(container, records) {
         </div>
       </div>
 
-      <!-- 3. Kapasitas Daya (Tetap Dijumlahkan) -->
+      <!-- 3. Kapasitas Daya -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Daya</span>
-          <div class="p-2 rounded-lg bg-amber-500/15 text-amber-400"><i data-lucide="zap" class="w-5 h-5"></i></div>
+          <button data-info="daya" title="Klik untuk melihat penjelasan perhitungan Total Daya" class="btn-icon-info p-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 text-amber-400 transition cursor-pointer">
+            <i data-lucide="zap" class="w-5 h-5"></i>
+          </button>
         </div>
         <p class="text-2xl font-extrabold text-white mt-3">${totalDayaMVA} MVA</p>
         <p class="text-xs text-slate-400 mt-1">${formatNumber(totalDayaVA)} VA Terpasang</p>
@@ -99,11 +111,13 @@ export function renderPageOverview(container, records) {
         </div>
       </div>
 
-      <!-- 4. Lingkup Daerah (Pelanggan Unik per Daerah) -->
+      <!-- 4. Lingkup Daerah -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Lingkup Daerah</span>
-          <div class="p-2 rounded-lg bg-purple-500/15 text-purple-400"><i data-lucide="map-pin" class="w-5 h-5"></i></div>
+          <button data-info="daerah" title="Klik untuk melihat penjelasan pemetaan Lingkup Daerah" class="btn-icon-info p-2 rounded-lg bg-purple-500/15 hover:bg-purple-500/30 text-purple-400 transition cursor-pointer">
+            <i data-lucide="map-pin" class="w-5 h-5"></i>
+          </button>
         </div>
         <p class="text-2xl font-extrabold text-white mt-3">${daerahList.length} Kawasan</p>
         <p class="text-xs text-slate-400 mt-1 truncate">Tertinggi: <strong class="text-purple-300">${daerahList[0]?.daerah || '-'}</strong></p>
@@ -113,17 +127,19 @@ export function renderPageOverview(container, records) {
         </div>
       </div>
 
-      <!-- 5. Status Eksekusi Shunt Trip (Tetap Dijumlahkan Semua) -->
+      <!-- 5. Status Eksekusi Shunt Trip -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Eksekusi TE</span>
-          <div class="p-2 rounded-lg bg-rose-500/15 text-rose-400"><i data-lucide="shield-alert" class="w-5 h-5"></i></div>
+          <button data-info="eksekusi" title="Klik untuk melihat penjelasan perhitungan Eksekusi TE" class="btn-icon-info p-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 transition cursor-pointer">
+            <i data-lucide="shield-alert" class="w-5 h-5"></i>
+          </button>
         </div>
         <p class="text-2xl font-extrabold text-white mt-3">${formatNumber(shuntripCount)} Shuntrip</p>
         <p class="text-xs text-slate-400 mt-1">Modem Off: <strong class="text-amber-300">${formatNumber(modemOffCount)}</strong></p>
         <div class="mt-3 pt-3 border-t border-slate-800/80 flex justify-between text-xs">
-          <span class="text-cyan-400 font-semibold">Req Niaga: ${formatNumber(records.filter(r => r.requestNiaga === 'Request').length)}</span>
-          <span class="text-slate-400">Tanpa Eks: ${formatNumber(totalBarisTransaksi - shuntripCount - modemOffCount)}</span>
+          <span class="text-cyan-400 font-semibold">Req Niaga: ${formatNumber(reqNiagaCount)}</span>
+          <span class="text-slate-400">Tanpa Eks: ${formatNumber(tanpaEksCount)}</span>
         </div>
       </div>
     </div>
@@ -180,8 +196,124 @@ export function renderPageOverview(container, records) {
     </div>
   `;
 
+  // Menambahkan fungsi klik pada setiap ikon kartu untuk menampilkan penjelasan asal-usul angka
+  setupIconExplanations(container, {
+    totalPelangganUnik,
+    totalBarisTransaksi,
+    pelangganUnikLunas,
+    pelangganUnikBelumLunas,
+    persenLunasPelanggan,
+    totalRupiah,
+    rupiahLunas,
+    rupiahBelum,
+    persenRupiahLunas,
+    totalDayaVA,
+    totalDayaMVA,
+    unikR3,
+    unikB2,
+    unikLainnya,
+    daerahList,
+    shuntripCount,
+    modemOffCount,
+    tanpaEksCount,
+    reqNiagaCount
+  });
+
   renderTabelDanGrafikBulanan(records, shuntripCount, modemOffCount, totalBarisTransaksi);
   if (window.lucide) window.lucide.createIcons();
+}
+
+function setupIconExplanations(container, stats) {
+  const infoMap = {
+    pelanggan: {
+      title: 'Penjelasan Angka Jumlah Pelanggan',
+      html: `
+        <div class="text-left text-xs space-y-2.5 leading-relaxed">
+          <p><strong>Mengapa angkanya ${formatNumber(stats.totalPelangganUnik)}?</strong><br/>
+          Sistem membaca kolom <code>IDPEL</code> dan menyaring nomor yang unik (tanpa duplikasi). Jika 1 pelanggan yang sama muncul di beberapa bulan, sistem tetap menghitungnya sebagai <strong>1 Pelanggan Unik</strong>.</p>
+          <div class="p-3 rounded-xl bg-slate-900 text-slate-100 space-y-1">
+            <div>• <strong>Pelanggan Unik (IDPEL):</strong> ${formatNumber(stats.totalPelangganUnik)} Pelanggan</div>
+            <div>• <strong>Akumulasi Baris Tagihan:</strong> ${formatNumber(stats.totalBarisTransaksi)}x kemunculan tagihan</div>
+            <div>• <strong>Sudah Lunas Penuh:</strong> ${formatNumber(stats.pelangganUnikLunas)} Pelanggan (${stats.persenLunasPelanggan}%)</div>
+            <div>• <strong>Masih Memiliki Tunggakan:</strong> ${formatNumber(stats.pelangganUnikBelumLunas)} Pelanggan</div>
+          </div>
+        </div>
+      `
+    },
+    rupiah: {
+      title: 'Penjelasan Perhitungan Total Rupiah',
+      html: `
+        <div class="text-left text-xs space-y-2.5 leading-relaxed">
+          <p><strong>Mengapa hasilnya ${formatRupiahSingkat(stats.totalRupiah)} (${formatRupiah(stats.totalRupiah)})?</strong><br/>
+          Berbeda dengan IDPEL yang dihitung unik, nilai tagihan pada kolom <code>RPTAG</code> <strong>tetap dijumlahkan seluruhnya</strong> dari ${formatNumber(stats.totalBarisTransaksi)} baris tagihan pada periode yang dipilih.</p>
+          <div class="p-3 rounded-xl bg-slate-900 text-slate-100 space-y-1">
+            <div>• <strong>Total Tagihan (RPTAG):</strong> ${formatRupiah(stats.totalRupiah)}</div>
+            <div>• <strong>Rupiah Sudah Lunas:</strong> ${formatRupiah(stats.rupiahLunas)} (${stats.persenRupiahLunas}%) — <em>diambil dari baris yang kolom Tanggal Lunas-nya sudah terisi</em></div>
+            <div>• <strong>Sisa Belum Lunas:</strong> ${formatRupiah(stats.rupiahBelum)} — <em>baris yang Tanggal Lunas-nya masih kosong</em></div>
+          </div>
+        </div>
+      `
+    },
+    daya: {
+      title: 'Penjelasan Perhitungan Total Daya',
+      html: `
+        <div class="text-left text-xs space-y-2.5 leading-relaxed">
+          <p><strong>Mengapa hasilnya ${stats.totalDayaMVA} MVA?</strong><br/>
+          Sistem menjumlahkan kapasitas daya pada kolom <code>DAYA</code> dalam satuan VA lalu membaginya dengan <code>1.000.000</code> untuk dikonversi ke satuan Mega Volt Ampere (MVA).</p>
+          <div class="p-3 rounded-xl bg-slate-900 text-slate-100 space-y-1">
+            <div>• <strong>Rumus Konversi:</strong> ${formatNumber(stats.totalDayaVA)} VA ÷ 1.000.000 = <strong>${stats.totalDayaMVA} MVA</strong></div>
+            <div>• <strong>Pelanggan Tarif R3 (Rumah Tangga Besar):</strong> ${formatNumber(stats.unikR3)} IDPEL</div>
+            <div>• <strong>Pelanggan Tarif B2 (Bisnis Menengah):</strong> ${formatNumber(stats.unikB2)} IDPEL</div>
+            <div>• <strong>Tarif Lainnya (S1, R2, P1, C, dll):</strong> ${formatNumber(stats.unikLainnya)} IDPEL</div>
+          </div>
+        </div>
+      `
+    },
+    daerah: {
+      title: 'Penjelasan Pemetaan Lingkup Daerah',
+      html: `
+        <div class="text-left text-xs space-y-2.5 leading-relaxed">
+          <p><strong>Mengapa muncul ${stats.daerahList.length} Kawasan?</strong><br/>
+          Sistem membaca teks pada kolom <code>ALAMAT</code> dan mencocokkan kata kunci jalan/kelurahan secara otomatis untuk mengelompokkan pelanggan unik ke masing-masing area kerja.</p>
+          <div class="p-3 rounded-xl bg-slate-900 text-slate-100 space-y-1 max-h-48 overflow-y-auto">
+            ${stats.daerahList.map((d, i) => `<div>${i + 1}. <strong>${d.daerah}:</strong> ${formatNumber(d.totalPelanggan)} Plg (${formatRupiah(d.totalRupiah)})</div>`).join('')}
+          </div>
+        </div>
+      `
+    },
+    eksekusi: {
+      title: 'Penjelasan Status Eksekusi TE & Request Niaga',
+      html: `
+        <div class="text-left text-xs space-y-2.5 leading-relaxed">
+          <p><strong>Mengapa hasilnya ${formatNumber(stats.shuntripCount)} Shuntrip?</strong><br/>
+          Sistem menghitung jumlah frekuensi tindakan pada kolom <code>Eksekusi TE</code> dan pengajuan pada kolom <code>Request Niaga</code> dari total ${formatNumber(stats.totalBarisTransaksi)} baris data.</p>
+          <div class="p-3 rounded-xl bg-slate-900 text-slate-100 space-y-1">
+            <div>• <strong>Eksekusi Shuntrip:</strong> ${formatNumber(stats.shuntripCount)} baris</div>
+            <div>• <strong>Kendala Modem Off:</strong> ${formatNumber(stats.modemOffCount)} baris</div>
+            <div>• <strong>Tanpa Keterangan Eksekusi:</strong> ${formatNumber(stats.tanpaEksCount)} baris</div>
+            <div>• <strong>Total Baris (${formatNumber(stats.shuntripCount)} + ${formatNumber(stats.modemOffCount)} + ${formatNumber(stats.tanpaEksCount)}):</strong> ${formatNumber(stats.totalBarisTransaksi)} baris</div>
+            <div class="pt-1 border-t border-slate-700 mt-1">• <strong>Status Request Niaga:</strong> ${formatNumber(stats.reqNiagaCount)} pengajuan</div>
+          </div>
+        </div>
+      `
+    }
+  };
+
+  container.querySelectorAll('.btn-icon-info').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.getAttribute('data-info');
+      const item = infoMap[key];
+      if (!item || !window.Swal) return;
+      window.Swal.fire({
+        title: item.title,
+        html: item.html,
+        icon: 'info',
+        confirmButtonText: 'Mengerti',
+        background: document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff',
+        color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a'
+      });
+    });
+  });
 }
 
 function renderTabelDanGrafikBulanan(records, shuntripCount, modemOffCount, totalBarisTransaksi) {
