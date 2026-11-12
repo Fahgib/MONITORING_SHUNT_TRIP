@@ -60,14 +60,59 @@ export function renderPageOverview(container, records) {
   const unikTebet = listPelangganUnik.filter((p) => p.daerah === 'TEBET').length;
   const unikCipinang = listPelangganUnik.filter((p) => p.daerah === 'CIPINANG').length;
 
+  // Menghitung rincian per bulan untuk ditampilkan di dalam pop-up penjelasan ikon
+  const monthsPresent = CONFIG.MONTH_ORDER.filter((m) => records.some((r) => r.bulan === m));
+  const seenIdpel = new Set();
+  const rincianBulanan = monthsPresent.map((bulan) => {
+    const items = records.filter((r) => r.bulan === bulan);
+    let baruCount = 0;
+    let berulangCount = 0;
+    items.forEach((it) => {
+      if (!seenIdpel.has(it.idpel)) {
+        baruCount += 1;
+        seenIdpel.add(it.idpel);
+      } else {
+        berulangCount += 1;
+      }
+    });
+
+    const lunasItems = items.filter((r) => r.isLunas);
+    const belumItems = items.filter((r) => !r.isLunas);
+    const rpTotal = items.reduce((a, b) => a + b.rptag, 0);
+    const rpLunas = lunasItems.reduce((a, b) => a + b.rptag, 0);
+    const rpBelum = belumItems.reduce((a, b) => a + b.rptag, 0);
+    const dayaVA = items.reduce((a, b) => a + b.daya, 0);
+    const shunt = items.filter((r) => r.eksekusiTE === 'Shuntrip').length;
+    const modem = items.filter((r) => r.eksekusiTE === 'Modem Off').length;
+    const tanpaEks = items.length - shunt - modem;
+    const req = items.filter((r) => r.requestNiaga === 'Request').length;
+
+    return {
+      bulan,
+      totalBaris: items.length,
+      baruCount,
+      berulangCount,
+      kumulatifUnik: seenIdpel.size,
+      rpTotal,
+      rpLunas,
+      rpBelum,
+      dayaVA,
+      dayaMVA: (dayaVA / 1_000_000).toFixed(2),
+      shunt,
+      modem,
+      tanpaEks,
+      req
+    };
+  });
+
   container.innerHTML = `
-    <!-- 5 KARTU PILAR UTAMA DENGAN IKON PENJELASAN INTERAKTIF -->
+    <!-- 5 KARTU PILAR UTAMA DENGAN IKON PENJELASAN RINCIAN PER BULAN -->
     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
       <!-- 1. Jumlah Pelanggan -->
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Jumlah Pelanggan</span>
-          <button data-info="pelanggan" title="Klik untuk melihat penjelasan perhitungan Jumlah Pelanggan" class="btn-icon-info p-2 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-400 transition cursor-pointer relative group">
+          <button data-info="pelanggan" title="Klik untuk melihat rincian penjumlahan per bulan" class="btn-icon-info p-2 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-400 transition cursor-pointer">
             <i data-lucide="users" class="w-5 h-5"></i>
           </button>
         </div>
@@ -83,7 +128,7 @@ export function renderPageOverview(container, records) {
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Rupiah</span>
-          <button data-info="rupiah" title="Klik untuk melihat penjelasan perhitungan Total Rupiah" class="btn-icon-info p-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 transition cursor-pointer">
+          <button data-info="rupiah" title="Klik untuk melihat rincian penjumlahan Rupiah per bulan" class="btn-icon-info p-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-400 transition cursor-pointer">
             <i data-lucide="wallet" class="w-5 h-5"></i>
           </button>
         </div>
@@ -99,7 +144,7 @@ export function renderPageOverview(container, records) {
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Daya</span>
-          <button data-info="daya" title="Klik untuk melihat penjelasan perhitungan Total Daya" class="btn-icon-info p-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 text-amber-400 transition cursor-pointer">
+          <button data-info="daya" title="Klik untuk melihat rincian penjumlahan Daya per bulan" class="btn-icon-info p-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/30 text-amber-400 transition cursor-pointer">
             <i data-lucide="zap" class="w-5 h-5"></i>
           </button>
         </div>
@@ -115,7 +160,7 @@ export function renderPageOverview(container, records) {
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Lingkup Daerah</span>
-          <button data-info="daerah" title="Klik untuk melihat penjelasan pemetaan Lingkup Daerah" class="btn-icon-info p-2 rounded-lg bg-purple-500/15 hover:bg-purple-500/30 text-purple-400 transition cursor-pointer">
+          <button data-info="daerah" title="Klik untuk melihat rincian per Kawasan dan Bulan" class="btn-icon-info p-2 rounded-lg bg-purple-500/15 hover:bg-purple-500/30 text-purple-400 transition cursor-pointer">
             <i data-lucide="map-pin" class="w-5 h-5"></i>
           </button>
         </div>
@@ -131,7 +176,7 @@ export function renderPageOverview(container, records) {
       <div class="glass-card p-5">
         <div class="flex items-center justify-between">
           <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Eksekusi TE</span>
-          <button data-info="eksekusi" title="Klik untuk melihat penjelasan perhitungan Eksekusi TE" class="btn-icon-info p-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 transition cursor-pointer">
+          <button data-info="eksekusi" title="Klik untuk melihat rincian Eksekusi per bulan" class="btn-icon-info p-2 rounded-lg bg-rose-500/15 hover:bg-rose-500/30 text-rose-400 transition cursor-pointer">
             <i data-lucide="shield-alert" class="w-5 h-5"></i>
           </button>
         </div>
@@ -196,7 +241,6 @@ export function renderPageOverview(container, records) {
     </div>
   `;
 
-  // Menambahkan fungsi klik pada setiap ikon kartu untuk menampilkan penjelasan asal-usul angka
   setupIconExplanations(container, {
     totalPelangganUnik,
     totalBarisTransaksi,
@@ -216,7 +260,8 @@ export function renderPageOverview(container, records) {
     shuntripCount,
     modemOffCount,
     tanpaEksCount,
-    reqNiagaCount
+    reqNiagaCount,
+    rincianBulanan
   });
 
   renderTabelDanGrafikBulanan(records, shuntripCount, modemOffCount, totalBarisTransaksi);
@@ -224,18 +269,54 @@ export function renderPageOverview(container, records) {
 }
 
 function setupIconExplanations(container, stats) {
+  const totalBerulang = stats.totalBarisTransaksi - stats.totalPelangganUnik;
+
   const infoMap = {
     pelanggan: {
       title: 'Penjelasan Angka Jumlah Pelanggan',
       html: `
-        <div class="text-left text-xs space-y-2.5 leading-relaxed">
+        <div class="text-left text-xs space-y-3 leading-relaxed">
           <p><strong>Mengapa angkanya ${formatNumber(stats.totalPelangganUnik)}?</strong><br/>
           Sistem membaca kolom <code>IDPEL</code> dan menyaring nomor yang unik (tanpa duplikasi). Jika 1 pelanggan yang sama muncul di beberapa bulan, sistem tetap menghitungnya sebagai <strong>1 Pelanggan Unik</strong>.</p>
           <div class="p-3 rounded-xl bg-slate-900 text-slate-100 space-y-1">
             <div>• <strong>Pelanggan Unik (IDPEL):</strong> ${formatNumber(stats.totalPelangganUnik)} Pelanggan</div>
-            <div>• <strong>Akumulasi Baris Tagihan:</strong> ${formatNumber(stats.totalBarisTransaksi)}x kemunculan tagihan</div>
+            <div>• <strong>Akumulasi Baris Tagihan:</strong> ${formatNumber(stats.totalBarisTransaksi)}x kemunculan (${formatNumber(stats.totalPelangganUnik)} IDPEL Baru + ${formatNumber(totalBerulang)} IDPEL Berulang)</div>
             <div>• <strong>Sudah Lunas Penuh:</strong> ${formatNumber(stats.pelangganUnikLunas)} Pelanggan (${stats.persenLunasPelanggan}%)</div>
             <div>• <strong>Masih Memiliki Tunggakan:</strong> ${formatNumber(stats.pelangganUnikBelumLunas)} Pelanggan</div>
+          </div>
+          <p class="font-bold text-cyan-400 pt-1">Rincian Penjumlahan Pelanggan per Bulan:</p>
+          <div class="max-h-56 overflow-y-auto rounded-xl border border-slate-700 bg-slate-950 p-2">
+            <table class="w-full text-[11px] text-slate-200">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-400">
+                  <th class="py-1.5 text-left">Bulan</th>
+                  <th class="py-1.5 text-right">Total Plg</th>
+                  <th class="py-1.5 text-right text-emerald-400">+ IDPEL Baru</th>
+                  <th class="py-1.5 text-right text-amber-300">IDPEL Berulang</th>
+                  <th class="py-1.5 text-right text-cyan-300">Kumulatif Unik</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${stats.rincianBulanan.map((m) => `
+                  <tr class="border-b border-slate-800/80">
+                    <td class="py-1 font-semibold">${m.bulan}</td>
+                    <td class="py-1 text-right">${formatNumber(m.totalBaris)}</td>
+                    <td class="py-1 text-right font-bold text-emerald-400">+${formatNumber(m.baruCount)}</td>
+                    <td class="py-1 text-right text-amber-300">${formatNumber(m.berulangCount)}</td>
+                    <td class="py-1 text-right font-bold text-cyan-300">${formatNumber(m.kumulatifUnik)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr class="font-extrabold text-white bg-slate-900">
+                  <td class="py-1.5">TOTAL</td>
+                  <td class="py-1.5 text-right">${formatNumber(stats.totalBarisTransaksi)}</td>
+                  <td class="py-1.5 text-right text-emerald-400">${formatNumber(stats.totalPelangganUnik)} Unik</td>
+                  <td class="py-1.5 text-right text-amber-300">${formatNumber(totalBerulang)}</td>
+                  <td class="py-1.5 text-right text-cyan-300">${formatNumber(stats.totalPelangganUnik)} Plg</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       `
@@ -243,13 +324,44 @@ function setupIconExplanations(container, stats) {
     rupiah: {
       title: 'Penjelasan Perhitungan Total Rupiah',
       html: `
-        <div class="text-left text-xs space-y-2.5 leading-relaxed">
+        <div class="text-left text-xs space-y-3 leading-relaxed">
           <p><strong>Mengapa hasilnya ${formatRupiahSingkat(stats.totalRupiah)} (${formatRupiah(stats.totalRupiah)})?</strong><br/>
-          Berbeda dengan IDPEL yang dihitung unik, nilai tagihan pada kolom <code>RPTAG</code> <strong>tetap dijumlahkan seluruhnya</strong> dari ${formatNumber(stats.totalBarisTransaksi)} baris tagihan pada periode yang dipilih.</p>
+          Nilai tagihan pada kolom <code>RPTAG</code> <strong>dijumlahkan seluruhnya dari setiap bulan</strong> (${formatNumber(stats.totalBarisTransaksi)} baris tagihan).</p>
           <div class="p-3 rounded-xl bg-slate-900 text-slate-100 space-y-1">
             <div>• <strong>Total Tagihan (RPTAG):</strong> ${formatRupiah(stats.totalRupiah)}</div>
-            <div>• <strong>Rupiah Sudah Lunas:</strong> ${formatRupiah(stats.rupiahLunas)} (${stats.persenRupiahLunas}%) — <em>diambil dari baris yang kolom Tanggal Lunas-nya sudah terisi</em></div>
-            <div>• <strong>Sisa Belum Lunas:</strong> ${formatRupiah(stats.rupiahBelum)} — <em>baris yang Tanggal Lunas-nya masih kosong</em></div>
+            <div>• <strong>Rupiah Sudah Lunas:</strong> ${formatRupiah(stats.rupiahLunas)} (${stats.persenRupiahLunas}%)</div>
+            <div>• <strong>Sisa Belum Lunas:</strong> ${formatRupiah(stats.rupiahBelum)}</div>
+          </div>
+          <p class="font-bold text-emerald-400 pt-1">Rincian Penjumlahan Rupiah per Bulan:</p>
+          <div class="max-h-56 overflow-y-auto rounded-xl border border-slate-700 bg-slate-950 p-2">
+            <table class="w-full text-[11px] text-slate-200">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-400">
+                  <th class="py-1.5 text-left">Bulan</th>
+                  <th class="py-1.5 text-right">Total Tagihan (Rp)</th>
+                  <th class="py-1.5 text-right text-emerald-400">Sudah Lunas</th>
+                  <th class="py-1.5 text-right text-rose-400">Belum Lunas</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${stats.rincianBulanan.map((m) => `
+                  <tr class="border-b border-slate-800/80">
+                    <td class="py-1 font-semibold">${m.bulan}</td>
+                    <td class="py-1 text-right font-bold">+ ${formatRupiah(m.rpTotal)}</td>
+                    <td class="py-1 text-right text-emerald-400">${formatRupiah(m.rpLunas)}</td>
+                    <td class="py-1 text-right text-rose-400">${formatRupiah(m.rpBelum)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr class="font-extrabold text-white bg-slate-900">
+                  <td class="py-1.5">TOTAL</td>
+                  <td class="py-1.5 text-right text-cyan-300">${formatRupiah(stats.totalRupiah)}</td>
+                  <td class="py-1.5 text-right text-emerald-400">${formatRupiah(stats.rupiahLunas)}</td>
+                  <td class="py-1.5 text-right text-rose-400">${formatRupiah(stats.rupiahBelum)}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       `
@@ -257,14 +369,43 @@ function setupIconExplanations(container, stats) {
     daya: {
       title: 'Penjelasan Perhitungan Total Daya',
       html: `
-        <div class="text-left text-xs space-y-2.5 leading-relaxed">
+        <div class="text-left text-xs space-y-3 leading-relaxed">
           <p><strong>Mengapa hasilnya ${stats.totalDayaMVA} MVA?</strong><br/>
-          Sistem menjumlahkan kapasitas daya pada kolom <code>DAYA</code> dalam satuan VA lalu membaginya dengan <code>1.000.000</code> untuk dikonversi ke satuan Mega Volt Ampere (MVA).</p>
+          Sistem menjumlahkan kapasitas daya pada kolom <code>DAYA</code> dari setiap bulan dalam satuan VA lalu membaginya dengan <code>1.000.000</code>.</p>
           <div class="p-3 rounded-xl bg-slate-900 text-slate-100 space-y-1">
             <div>• <strong>Rumus Konversi:</strong> ${formatNumber(stats.totalDayaVA)} VA ÷ 1.000.000 = <strong>${stats.totalDayaMVA} MVA</strong></div>
-            <div>• <strong>Pelanggan Tarif R3 (Rumah Tangga Besar):</strong> ${formatNumber(stats.unikR3)} IDPEL</div>
-            <div>• <strong>Pelanggan Tarif B2 (Bisnis Menengah):</strong> ${formatNumber(stats.unikB2)} IDPEL</div>
-            <div>• <strong>Tarif Lainnya (S1, R2, P1, C, dll):</strong> ${formatNumber(stats.unikLainnya)} IDPEL</div>
+            <div>• <strong>Pelanggan Unik Tarif R3:</strong> ${formatNumber(stats.unikR3)} Plg | <strong>Tarif B2:</strong> ${formatNumber(stats.unikB2)} Plg | <strong>Lainnya:</strong> ${formatNumber(stats.unikLainnya)} Plg</div>
+          </div>
+          <p class="font-bold text-amber-400 pt-1">Rincian Penjumlahan Daya per Bulan:</p>
+          <div class="max-h-56 overflow-y-auto rounded-xl border border-slate-700 bg-slate-950 p-2">
+            <table class="w-full text-[11px] text-slate-200">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-400">
+                  <th class="py-1.5 text-left">Bulan</th>
+                  <th class="py-1.5 text-right">Pelanggan</th>
+                  <th class="py-1.5 text-right text-amber-300">Total Daya (VA)</th>
+                  <th class="py-1.5 text-right text-cyan-300">Daya (MVA)</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${stats.rincianBulanan.map((m) => `
+                  <tr class="border-b border-slate-800/80">
+                    <td class="py-1 font-semibold">${m.bulan}</td>
+                    <td class="py-1 text-right">${formatNumber(m.totalBaris)}</td>
+                    <td class="py-1 text-right font-bold text-amber-300">+ ${formatNumber(m.dayaVA)} VA</td>
+                    <td class="py-1 text-right text-cyan-300">${m.dayaMVA} MVA</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr class="font-extrabold text-white bg-slate-900">
+                  <td class="py-1.5">TOTAL</td>
+                  <td class="py-1.5 text-right">${formatNumber(stats.totalBarisTransaksi)}</td>
+                  <td class="py-1.5 text-right text-amber-300">${formatNumber(stats.totalDayaVA)} VA</td>
+                  <td class="py-1.5 text-right text-cyan-300">${stats.totalDayaMVA} MVA</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       `
@@ -272,27 +413,88 @@ function setupIconExplanations(container, stats) {
     daerah: {
       title: 'Penjelasan Pemetaan Lingkup Daerah',
       html: `
-        <div class="text-left text-xs space-y-2.5 leading-relaxed">
+        <div class="text-left text-xs space-y-3 leading-relaxed">
           <p><strong>Mengapa muncul ${stats.daerahList.length} Kawasan?</strong><br/>
-          Sistem membaca teks pada kolom <code>ALAMAT</code> dan mencocokkan kata kunci jalan/kelurahan secara otomatis untuk mengelompokkan pelanggan unik ke masing-masing area kerja.</p>
-          <div class="p-3 rounded-xl bg-slate-900 text-slate-100 space-y-1 max-h-48 overflow-y-auto">
-            ${stats.daerahList.map((d, i) => `<div>${i + 1}. <strong>${d.daerah}:</strong> ${formatNumber(d.totalPelanggan)} Plg (${formatRupiah(d.totalRupiah)})</div>`).join('')}
+          Sistem membaca teks pada kolom <code>ALAMAT</code> dan mengelompokkan pelanggan unik serta menjumlahkan tagihan Rupiah per kawasan.</p>
+          <div class="max-h-64 overflow-y-auto rounded-xl border border-slate-700 bg-slate-950 p-2">
+            <table class="w-full text-[11px] text-slate-200">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-400">
+                  <th class="py-1.5 text-left">Kawasan / Daerah</th>
+                  <th class="py-1.5 text-right">IDPEL Unik</th>
+                  <th class="py-1.5 text-right text-emerald-400">Lunas</th>
+                  <th class="py-1.5 text-right text-rose-400">Sisa</th>
+                  <th class="py-1.5 text-right text-cyan-300">Akumulasi Rupiah</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${stats.daerahList.map((d) => `
+                  <tr class="border-b border-slate-800/80">
+                    <td class="py-1 font-bold text-purple-300">${d.daerah}</td>
+                    <td class="py-1 text-right font-bold">${formatNumber(d.totalPelanggan)}</td>
+                    <td class="py-1 text-right text-emerald-400">${formatNumber(d.lunas)}</td>
+                    <td class="py-1 text-right text-rose-400">${formatNumber(d.belumLunas)}</td>
+                    <td class="py-1 text-right font-semibold">${formatRupiah(d.totalRupiah)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr class="font-extrabold text-white bg-slate-900">
+                  <td class="py-1.5">TOTAL (${stats.daerahList.length} Kawasan)</td>
+                  <td class="py-1.5 text-right">${formatNumber(stats.totalPelangganUnik)} Plg</td>
+                  <td class="py-1.5 text-right text-emerald-400">${formatNumber(stats.pelangganUnikLunas)}</td>
+                  <td class="py-1.5 text-right text-rose-400">${formatNumber(stats.pelangganUnikBelumLunas)}</td>
+                  <td class="py-1.5 text-right text-cyan-300">${formatRupiah(stats.totalRupiah)}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       `
     },
     eksekusi: {
-      title: 'Penjelasan Status Eksekusi TE & Request Niaga',
+      title: 'Penjelasan Status Eksekusi TE per Bulan',
       html: `
-        <div class="text-left text-xs space-y-2.5 leading-relaxed">
+        <div class="text-left text-xs space-y-3 leading-relaxed">
           <p><strong>Mengapa hasilnya ${formatNumber(stats.shuntripCount)} Shuntrip?</strong><br/>
-          Sistem menghitung jumlah frekuensi tindakan pada kolom <code>Eksekusi TE</code> dan pengajuan pada kolom <code>Request Niaga</code> dari total ${formatNumber(stats.totalBarisTransaksi)} baris data.</p>
+          Sistem menjumlahkan tindakan pada kolom <code>Eksekusi TE</code> dan <code>Request Niaga</code> dari setiap bulan.</p>
           <div class="p-3 rounded-xl bg-slate-900 text-slate-100 space-y-1">
-            <div>• <strong>Eksekusi Shuntrip:</strong> ${formatNumber(stats.shuntripCount)} baris</div>
-            <div>• <strong>Kendala Modem Off:</strong> ${formatNumber(stats.modemOffCount)} baris</div>
-            <div>• <strong>Tanpa Keterangan Eksekusi:</strong> ${formatNumber(stats.tanpaEksCount)} baris</div>
-            <div>• <strong>Total Baris (${formatNumber(stats.shuntripCount)} + ${formatNumber(stats.modemOffCount)} + ${formatNumber(stats.tanpaEksCount)}):</strong> ${formatNumber(stats.totalBarisTransaksi)} baris</div>
-            <div class="pt-1 border-t border-slate-700 mt-1">• <strong>Status Request Niaga:</strong> ${formatNumber(stats.reqNiagaCount)} pengajuan</div>
+            <div>• <strong>Total Shuntrip:</strong> ${formatNumber(stats.shuntripCount)} | <strong>Modem Off:</strong> ${formatNumber(stats.modemOffCount)} | <strong>Tanpa Eks:</strong> ${formatNumber(stats.tanpaEksCount)}</div>
+            <div>• <strong>Total Request Niaga:</strong> ${formatNumber(stats.reqNiagaCount)} pengajuan</div>
+          </div>
+          <p class="font-bold text-rose-400 pt-1">Rincian Penjumlahan Eksekusi per Bulan:</p>
+          <div class="max-h-56 overflow-y-auto rounded-xl border border-slate-700 bg-slate-950 p-2">
+            <table class="w-full text-[11px] text-slate-200">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-400">
+                  <th class="py-1.5 text-left">Bulan</th>
+                  <th class="py-1.5 text-right text-cyan-300">Shuntrip</th>
+                  <th class="py-1.5 text-right text-amber-300">Modem Off</th>
+                  <th class="py-1.5 text-right">Tanpa Eks</th>
+                  <th class="py-1.5 text-right text-emerald-400">Req Niaga</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${stats.rincianBulanan.map((m) => `
+                  <tr class="border-b border-slate-800/80">
+                    <td class="py-1 font-semibold">${m.bulan}</td>
+                    <td class="py-1 text-right font-bold text-cyan-300">+${formatNumber(m.shunt)}</td>
+                    <td class="py-1 text-right text-amber-300">+${formatNumber(m.modem)}</td>
+                    <td class="py-1 text-right text-slate-400">${formatNumber(m.tanpaEks)}</td>
+                    <td class="py-1 text-right text-emerald-400">${formatNumber(m.req)}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+              <tfoot>
+                <tr class="font-extrabold text-white bg-slate-900">
+                  <td class="py-1.5">TOTAL</td>
+                  <td class="py-1.5 text-right text-cyan-300">${formatNumber(stats.shuntripCount)}</td>
+                  <td class="py-1.5 text-right text-amber-300">${formatNumber(stats.modemOffCount)}</td>
+                  <td class="py-1.5 text-right">${formatNumber(stats.tanpaEksCount)}</td>
+                  <td class="py-1.5 text-right text-emerald-400">${formatNumber(stats.reqNiagaCount)}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         </div>
       `
@@ -307,7 +509,7 @@ function setupIconExplanations(container, stats) {
       window.Swal.fire({
         title: item.title,
         html: item.html,
-        icon: 'info',
+        width: 650,
         confirmButtonText: 'Mengerti',
         background: document.documentElement.classList.contains('dark') ? '#0f172a' : '#ffffff',
         color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a'
