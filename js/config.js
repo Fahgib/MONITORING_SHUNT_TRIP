@@ -23,7 +23,9 @@ export const CONFIG = {
     'Juli 2026',
     'Agustus 2026',
     'September 2026',
-    'Oktober 2026'
+    'Oktober 2026',
+    'November 2026',
+    'Desember 2026'
   ],
 
   STORAGE_KEYS: {
