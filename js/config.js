@@ -11,7 +11,7 @@ export const CONFIG = {
   // Urutan resmi bulan pada file MONITORING SHUNT TRIP JTN 2026.xlsx
   MONTH_ORDER: [
     'Januari', 'Februari', 'Maret', 'April', 'Mei',
-    'Juni', 'Juli', 'Agustus', 'September', 'Oktober'
+    'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
   ],
 
   // Daftar nama sheet pelanggan AMR yang digabungkan otomatis
