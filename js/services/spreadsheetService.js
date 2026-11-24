@@ -2,7 +2,6 @@ import { CONFIG } from '../config.js';
 import { cleanRupiah, cleanDaya, getKategoriDaya, cleanDate } from '../utils/formatter.js';
 import { detectLingkupDaerah } from './daerahMapper.js';
 
-// Mengubah link Google Spreadsheet biasa menjadi link unduh XLSX langsung
 export function buildGoogleSheetExportUrl(rawUrl) {
   if (!rawUrl) return '';
   const match = rawUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
@@ -12,7 +11,6 @@ export function buildGoogleSheetExportUrl(rawUrl) {
   return rawUrl;
 }
 
-// Mengambil daftar update pelunasan manual yang disimpan di browser
 export function getManualLunasUpdates() {
   try {
     const raw = localStorage.getItem(CONFIG.STORAGE_KEYS.MANUAL_LUNAS);
@@ -22,7 +20,6 @@ export function getManualLunasUpdates() {
   }
 }
 
-// Menyimpan update status lunas harian dari tabel dasbor
 export function saveManualLunasUpdate(rowKey, tanggalLunas) {
   const current = getManualLunasUpdates();
   if (tanggalLunas) {
@@ -33,24 +30,45 @@ export function saveManualLunasUpdate(rowKey, tanggalLunas) {
   localStorage.setItem(CONFIG.STORAGE_KEYS.MANUAL_LUNAS, JSON.stringify(current));
 }
 
-// Membaca seluruh sheet dari objek Workbook SheetJS (XLSX)
+// Menyamakan format nama bulan (contoh: "november" / "NOVEMBER" -> "November")
+function normalizeBulan(rawBulan, sheetName) {
+  const source = String(rawBulan || sheetName || '').trim().toLowerCase();
+  const matched = CONFIG.MONTH_ORDER.find((m) => source.includes(m.toLowerCase()));
+  return matched || '';
+}
+
+// Mendeteksi semua sheet AMR bulanan secara fleksibel (mengabaikan LAPORAN & EKSEKUSI AMI)
+function getValidTargetSheets(workbook) {
+  const ignored = ['LAPORAN', 'EKSEKUSI AMI'];
+  const targetUpper = CONFIG.TARGET_SHEETS.map((s) => s.toUpperCase());
+
+  return workbook.SheetNames.filter((name) => {
+    const upper = name.trim().toUpperCase();
+    if (ignored.includes(upper)) return false;
+    if (targetUpper.includes(upper)) return true;
+    return CONFIG.MONTH_ORDER.some((m) => upper.includes(m.toUpperCase()));
+  });
+}
+
 export function parseWorkbookToRecords(workbook) {
   const manualUpdates = getManualLunasUpdates();
   const records = [];
+  const sheetsToRead = getValidTargetSheets(workbook);
 
-  CONFIG.TARGET_SHEETS.forEach((sheetName) => {
+  sheetsToRead.forEach((sheetName) => {
     const sheet = workbook.Sheets[sheetName];
     if (!sheet) return;
 
     const rows = window.XLSX.utils.sheet_to_json(sheet, { defval: '' });
     rows.forEach((row, idx) => {
-      const bulan = String(row['Bulan'] || '').trim();
+      const bulan = normalizeBulan(row['Bulan'], sheetName);
       const rawIdpel = row['IDPEL'];
       if (!bulan || !rawIdpel) return;
 
       const idpel = String(Math.trunc(Number(rawIdpel)) || rawIdpel).trim();
-      const rowKey = `${bulan}_${idpel}_${idx}`;
+      if (!idpel || idpel === 'NaN') return;
 
+      const rowKey = `${bulan}_${idpel}_${idx}`;
       const daya = cleanDaya(row['DAYA']);
       const rptag = cleanRupiah(row['RPTAG']);
       const alamat = String(row['ALAMAT'] || '').trim();
@@ -84,7 +102,6 @@ export function parseWorkbookToRecords(workbook) {
   return records;
 }
 
-// Membaca file dari ArrayBuffer (baik dari upload lokal maupun Google Spreadsheet)
 export async function loadFromArrayBuffer(buffer) {
   const data = new Uint8Array(buffer);
   const workbook = window.XLSX.read(data, { type: 'array', cellDates: true });
