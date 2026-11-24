@@ -194,7 +194,7 @@ export function renderPageOverview(container, records) {
         <div class="flex items-center justify-between mb-4">
           <div>
             <h3 class="text-base font-bold text-white">Tren Rupiah Tagihan & Pelunasan per Bulan</h3>
-            <p class="text-xs text-slate-400">Perbandingan Rupiah Lunas vs Sisa Tunggakan (Januari - Oktober 2026)</p>
+            <p class="text-xs text-slate-400">Perbandingan Rupiah Lunas vs Sisa Tunggakan (Januari - Desember 2026)</p>
           </div>
         </div>
         <div class="h-72">
